@@ -50,6 +50,37 @@ backend/
 └── README.md
 ```
 
+---
+
+## API Endpoints (Summary)
+
+| Category      | Method | Endpoint                      | Description |
+|---------------|--------|-------------------------------|-------------|
+| Authentication | POST   | `/register`                   | Register a new user |
+| Authentication | POST   | `/login`                      | Login to the platform |
+| Authentication | POST   | `/reset-password`             | Request a password reset link |
+| Bus Companies  | POST   | `/bus-companies`              | Register a new bus company (admin) |
+| Bus Companies  | GET    | `/bus-companies`              | View all companies |
+| Bus Companies  | GET    | `/bus-companies/{id}`         | View specific company details |
+| Buses          | POST   | `/buses`                      | Add a bus (admin/company) |
+| Buses          | GET    | `/buses`                      | View all buses |
+| Routes         | POST   | `/routes`                     | Create a new route |
+| Routes         | GET    | `/routes`                     | View all routes |
+| Schedules      | POST   | `/schedules`                  | Create schedule for a bus |
+| Schedules      | GET    | `/schedules`                  | Get all available schedules |
+| Bookings       | POST   | `/bookings`                   | Book a seat |
+| Bookings       | GET    | `/bookings`                   | View all bookings for a user or company |
+| Bookings       | PUT    | `/bookings/{id}/cancel`       | Cancel booking (within 24 hours before departure) |
+| QR Code        | GET    | `/bookings/{id}/generate-qr`  | Generate QR code for a booking |
+| QR Code        | POST   | `/bookings/scan-qr`           | Verify booking via QR scan |
+| Cashouts       | POST   | `/cashouts/request`           | Company requests withdrawal |
+| Cashouts       | GET    | `/cashouts`                   | View company’s cashout history |
+| Search         | GET    | `/search`                     | Search routes and schedules by origin, destination, and date |
+
+Full OpenAPI/Swagger documentation will be generated at `/api/docs` in development.
+
+---
+
 ## Setup & Installation
 
 1. **Clone the repository** (ensure you are on the appropriate branch).
@@ -111,7 +142,13 @@ Tests are located in `tests/` and cover:
 ---
 
 ## Deployment
-Use `gunicorn` + `nginx` in production.
+
+1. Push `main` to production repository.
+2. CI/CD pipeline (GitHub Actions) will:
+   - Run tests
+   - Build Docker image
+   - Deploy to staging/production via Docker Compose or Kubernetes
+3. Use `gunicorn` + `nginx` in production.
 
 ---
 
@@ -119,3 +156,7 @@ Use `gunicorn` + `nginx` in production.
 
 See the root-level `README.md` **Contribution Guidelines** section for complete instructions.
 
+---
+
+*Maintained by the Backend Developer – Donald Banda*
+```
