@@ -6,3 +6,4 @@ python-dotenv
 flask-CORS
 flask_login
 bcrypt
+pyjwt
