@@ -114,4 +114,5 @@ def request_password_reset():
 @login_required
 def logout():
     logout_user()
+    return jsonify({"message": "You have been logged out."}), 200
 
