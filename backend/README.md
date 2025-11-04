@@ -30,6 +30,7 @@ backend/
 │   ├── models.py            # All SQLAlchemy models (Users, BusCompanies, Buses, etc.)
 │   ├── blueprints/
 │   │   ├── auth.py          # /register, /login, /reset-password
+│   │   ├── buses.py         # /bus (GET), /bus (POST)
 │   │   ├── companies.py     # /bus-companies, /buses
 │   │   ├── routes.py        # /routes, /schedules
 │   │   ├── bookings.py      # /bookings, /bookings/{id}/cancel, QR endpoints
