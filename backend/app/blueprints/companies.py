@@ -63,4 +63,4 @@ def get_bus_companies():
             } 
             for bus_company in bus_companies
         ]
-    })
+    }), 200
