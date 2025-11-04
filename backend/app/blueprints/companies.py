@@ -48,12 +48,19 @@ def create_company():
     }), 201
 
 
-# @company.route('/bus-company', methods=["GET"])
-# def get_bus_companies():
-#     bus_companies = BusCompany.query.all()
+@company.route('/bus-company', methods=["GET"])
+def get_bus_companies():
+    bus_companies = BusCompany.query.all()
 
-#     return jsonify({
-#         "bus_companies":[
-            
-#         ]
-#     })
+    return jsonify({
+        [
+            {
+                "id": bus_company.id,
+                "name": bus_company.name,
+                "description": bus_company.description,
+                "contact_info": bus_company.contact_info,
+                "account_details": bus_company.account_details
+            } 
+            for bus_company in bus_companies
+        ]
+    })
