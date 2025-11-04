@@ -69,7 +69,7 @@ def get_bus_companies():
     }), 200
 
 
-@company.route('/bus-company/{int:id}')
+@company.route('/bus-company/<int:id>')
 def get_bus_company(id: int):
     """ Get a specific bus company """
 
