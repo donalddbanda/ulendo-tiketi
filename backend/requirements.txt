@@ -1,9 +1,7 @@
 flask
-flask_sqlalchemy
-flask_migrate
+flask-login
 flask-Mail
-python-dotenv
 flask-CORS
-flask_login
-bcrypt
-pyjwt
+flask-migrate
+flask-sqlalchemy
+python-dotenv
