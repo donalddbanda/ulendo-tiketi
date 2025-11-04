@@ -64,3 +64,23 @@ def get_bus_companies():
             for bus_company in bus_companies
         ]
     }), 200
+
+
+@company.route('/bus-company/{int:id}')
+def get_bus_company(id: int):
+    """ Get a specific bus company """
+
+    bus_company = BusCompany.query.get(id)
+
+    if not bus_company:
+        return jsonify({"error": "Bus company not found"}), 404
+    
+    return jsonify({
+        "id": bus_company.id,
+        "name": bus_company.name,
+        "description": bus_company.description,
+        "contact_info": bus_company.contact_info,
+        "account_details": bus_company.account_details
+    }), 200
+
+
