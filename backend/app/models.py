@@ -37,10 +37,10 @@ class BusCompany(db.Model):
     __tablename__ = 'bus_company'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    description = db.Column(db.Text)
-    contact_info = db.Column(db.String(255))
-    account_details = db.Column(db.String(255))
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    description = db.Column(db.Text, nullable=False)
+    contact_info = db.Column(db.JSON, nullable=False)
+    account_details = db.Column(db.JSON, nullable=False)
 
     # Relationships
     buses = db.relationship('Bus', backref='bus_company', lazy=True)
@@ -72,7 +72,7 @@ class Route(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     origin = db.Column(db.String(120), nullable=False)
     destination = db.Column(db.String(120), nullable=False)
-    distance = db.Column(db.Float)
+    distance = db.Column(db.Float, nullable=True)
 
     # Relationships
     schedules = db.relationship('Schedule', backref='route', lazy=True)
@@ -123,8 +123,8 @@ class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     payment_reference = db.Column(db.String(120), unique=True)
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), nullable=False)
-    method = db.Column(db.String(50))
+    status = db.Column(db.String(50), nullable=False, index=True, default='pending')
+    method = db.Column(db.String(50), nullable=False, index=True, default='PayChangu')
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
 
     booking_id = db.Column(db.Integer, db.ForeignKey('booking.id'), nullable=False)
@@ -140,7 +140,7 @@ class Cashout(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='pending')
     requested_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    processed_at = db.Column(db.DateTime)
+    processed_at = db.Column(db.DateTime, nullable=True)
 
     company_id = db.Column(db.Integer, db.ForeignKey('bus_company.id'), nullable=False)
 
