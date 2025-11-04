@@ -22,6 +22,9 @@ def create_company():
     if not all([name, description, account_details, contact_info]):
         return jsonify({"error": "Provide name, description, contact details, and account details"}), 400
 
+    if BusCompany.query.filter_by(name=name).first():
+        return jsonify({"error": "Bus company name already exists"}), 400
+
     bus_company = BusCompany(
         name=name,
         account_details=json.dumps(account_details),
