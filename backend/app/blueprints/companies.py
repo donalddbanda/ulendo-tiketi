@@ -1,12 +1,14 @@
 import json
 from app import db
-from flask import Blueprint, request, jsonify
 from ..models import BusCompany
+from flask import Blueprint, request, jsonify
+from .auth import admin_required, admin_or_user_required
 
 
 company = Blueprint("bookin", __name__)
 
 @company.route('/bus-company', methods=["POST"])
+@admin_required
 def create_company():
     """ Create a bus company"""
 
@@ -52,6 +54,7 @@ def create_company():
 
 
 @company.route('/bus-company', methods=["GET"])
+@admin_or_user_required
 def get_bus_companies():
     bus_companies = BusCompany.query.all()
 
