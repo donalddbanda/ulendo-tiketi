@@ -53,7 +53,7 @@ def get_bus_companies():
     bus_companies = BusCompany.query.all()
 
     return jsonify({
-        [
+        "bus_companies": [
             {
                 "id": bus_company.id,
                 "name": bus_company.name,
