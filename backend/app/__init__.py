@@ -24,10 +24,12 @@ def create_app(config_class=None):
     from .blueprints.auth import auth
     from .blueprints.buses import bus
     from .blueprints.companies import company
+    from .blueprints.schedules import schedules
 
     app.register_blueprint(auth)
     app.register_blueprint(bus)
     app.register_blueprint(company)
+    app.register_blueprint(schedules)
 
     # --- Shell Context ---
     @app.shell_context_processor
