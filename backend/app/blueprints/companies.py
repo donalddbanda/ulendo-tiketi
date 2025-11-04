@@ -62,7 +62,6 @@ def get_bus_companies():
                 "name": bus_company.name,
                 "description": bus_company.description,
                 "contact_info": bus_company.contact_info,
-                "account_details": bus_company.account_details
             } 
             for bus_company in bus_companies
         ]
@@ -83,7 +82,6 @@ def get_bus_company(id: int):
         "name": bus_company.name,
         "description": bus_company.description,
         "contact_info": bus_company.contact_info,
-        "account_details": bus_company.account_details
     }), 200
 
 
