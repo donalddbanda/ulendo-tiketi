@@ -23,10 +23,12 @@ def create_app(config_class=None):
     # Register blueprints here
     from .blueprints.auth import auth
     from .blueprints.buses import bus
+    from .blueprints.routes import routes
     from .blueprints.companies import company
 
     app.register_blueprint(auth)
     app.register_blueprint(bus)
+    app.register_blueprint(routes)
     app.register_blueprint(company)
 
     # --- Shell Context ---
