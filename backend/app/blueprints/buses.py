@@ -44,3 +44,22 @@ def add_bus():
             "seating_capacity": seating_capacity
         }
     })
+
+
+@bus.route('/bus', methods=['GET'])
+@admin_or_user_required
+def get_buses():
+    buses = Bus.query.all()
+
+    if buses == []:
+        return jsonify({"message": "Buses not available"}), 200
+    
+    return jsonify({
+        'buses': [{
+            "bus_id": bus.id,
+            "bus_number": bus.bus_number,
+            "seating_capacity": bus.seating_capacity,
+            "owner": bus.bus_company.name
+        } for bus in buses]
+    }), 200
+
