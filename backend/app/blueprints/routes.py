@@ -41,3 +41,28 @@ def create_route():
             "distance": route.distance
         }
     })
+
+
+@routes.route('/routes', methods=["GET"])
+def get_routes():
+    """ Get routes """
+
+    try:
+        routes = Route.query.all()
+    
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch routes"}), 500
+
+    if routes == []:
+        return jsonify({"message": "Routes not available"}), 200
+    
+    return jsonify({
+        "routes": [
+            {
+                "id": route.id,
+                "origin": route.orign,
+                "destination": route.destination,
+                "distance": route.distance
+            } for route in routes
+        ]
+    })
