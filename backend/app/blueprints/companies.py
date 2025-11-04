@@ -14,10 +14,10 @@ def create_company():
     if not data:
         return jsonify({"error": "data not provided"}), 400
 
-    name = data.get_json('name')
+    name = data.get('name')
     description = data.get('description')
-    contact_info = data.get_json('contact_info')
-    account_details = data.get_json('account_details')
+    contact_info = data.get('contact_info')
+    account_details = data.get('account_details')
 
     if not all([name, description, account_details, contact_info]):
         return jsonify({"error": "Provide name, description, contact details, and account details"}), 400
