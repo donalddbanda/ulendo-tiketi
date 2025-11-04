@@ -178,7 +178,7 @@ def admin_or_company_required(f):
 def company_not_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_anonnymous or current_user.role.lower() not in ['user', 'admin']:
+        if current_user.is_authenticated and current_user.role.lower() not in ['user', 'admin']:
             return jsonify({"error": "Company access is restricted"}), 403
         return f(*args, **kwargs)
     return decorated_function
