@@ -20,11 +20,11 @@ def add_bus():
     if not all([bus_number, seating_capacity]):
         return jsonify({"error": "Bus number and seating capacity is required"}), 400
 
-    if current_user.role.lower() == 'admin' and not data['company_id']:
+    if current_user.role.lower() == 'admin' and not data.get('company_id'):
         return jsonify({"error": "Company ID is required"}), 400
     
     if current_user.role.lower() == 'admin':
-        if BusCompany.query.filter_by(data['company_id']).first():
+        if BusCompany.query.filter_by(id=data.get('company_id')).first():
             return jsonify({"error": "Invalid company ID"}), 400
     
     bus = Bus(
