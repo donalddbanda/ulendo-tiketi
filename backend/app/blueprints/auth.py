@@ -1,5 +1,6 @@
 import jwt
 from app import db
+from functools import wraps
 from flask import jsonify, request
 from flask import Blueprint, current_app
 from app.models import User, PasswordResetToken
@@ -115,4 +116,71 @@ def request_password_reset():
 def logout():
     logout_user()
     return jsonify({"message": "You have been logged out."}), 200
+
+
+#---------- Role based access decorators -----------------------
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Authentication required"}), 401
+        if current_user.role.lower() != 'admin':
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def user_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Authentication required"}), 401
+        if current_user.role.lower() != 'user':
+            return jsonify({"error": "User access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def company_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Authentication required"}), 401
+        if current_user.role.lower() != 'compnay':
+            return jsonify({"error": "Company access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_or_user_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Authentication required"}), 401
+        if current_user.role.lower() not in ['user', 'admin']:
+            return jsonify({"error": "Admin or User access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_or_company_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({"error": "Authentication required"}), 401
+        if current_user.role.lower() not in ['company', 'admin']:
+            return jsonify({"error": "Admin or Company access required"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def company_not_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonnymous or current_user.role.lower() not in ['user', 'admin']:
+            return jsonify({"error": "Company access is restricted"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 
