@@ -1,6 +1,6 @@
 from app import db
-from app.models import Bus
 from flask_login import current_user
+from app.models import Bus, BusCompany
 from flask import Blueprint, request, jsonify
 from .auth import admin_or_user_required, admin_or_company_required
 
@@ -20,8 +20,12 @@ def add_bus():
     if not all([bus_number, seating_capacity]):
         return jsonify({"error": "Bus number and seating capacity is required"}), 400
 
-    if current_user.role.lower() == 'admin' and not company_id:
+    if current_user.role.lower() == 'admin' and not data['company_id']:
         return jsonify({"error": "Company ID is required"}), 400
+    
+    if current_user.role.lower() == 'admin':
+        if BusCompany.query.filter_by(data['company_id']).first():
+            return jsonify({"error": "Invalid company ID"}), 400
     
     bus = Bus(
         bus_company_id = current_user.id if current_user.role.lower == 'company' else company_id,

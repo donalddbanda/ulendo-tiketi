@@ -12,7 +12,7 @@ auth = Blueprint('auth', __name__)
 @auth.route('/register', methods=['POST'])
 def register():
     if current_user.is_authenticated:
-        return jsonify({"message": "You are already logged in"}), 400
+        logout_user()
     
     data = request.get_json()
 
@@ -37,7 +37,7 @@ def register():
     try:
         db.session.add(new_user)
         db.session.commit()
-        return jsonify({"message": "User registered successfully", "redirect": "/login"}), 201
+        return jsonify({"message": "Account created successfully", "redirect": "/login"}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": "Registration failed", "details": str(e)}), 500
@@ -51,7 +51,6 @@ def login():
 
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role')
     remember_me = data.get('remember', False)
     redirect = data.get('redirect')
 
@@ -62,8 +61,9 @@ def login():
     
     if user is None or not user.verify_password(password):
         return jsonify({"error": "Invalid email or password"}), 401
-    
+
     login_user(user, remember=remember_me)
+    role = user.role
     return jsonify({"message": "Logged in successfully", "role": role, "redirect": redirect}), 200
 
 
