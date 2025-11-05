@@ -12,6 +12,10 @@ dependencies = [
     "flask-mail>=0.10.0",
     "flask-migrate>=4.1.0",
     "flask-sqlalchemy>=3.1.1",
+<<<<<<< HEAD
+=======
+    "paychangu>=0.0.3",
+>>>>>>> 8d0becc (feat: Enhance backend configuration and application setup and created database tables in the models.py file)
     "pyjwt>=2.10.1",
     "python-dotenv>=1.2.1",
 ]

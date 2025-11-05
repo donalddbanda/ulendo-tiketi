@@ -5,3 +5,5 @@ flask-CORS
 flask-migrate
 flask-sqlalchemy
 python-dotenv
+paychangu
+pyjwt
