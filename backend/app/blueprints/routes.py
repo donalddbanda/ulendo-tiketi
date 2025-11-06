@@ -29,3 +29,15 @@ def create_route():
         abort(400)
     
     return jsonify({"message": "route created", "route": route.to_dict()}), 201
+
+
+@routes_bp.route('/routes', methods=["GET"])
+def get_routes():
+    """ Get all routes """
+
+    routes = Routes.query.all()
+    if routes == []:
+        return jsonify({"message": "routes not found", "routes": []}), 200
+
+    return jsonify({"routes": [route.to_dict() for route in routes]}), 200
+
