@@ -35,3 +35,45 @@ def register_bus_company():
         abort(500)
     
     return jsonify({"message": "bus company created", "company": bus_company.to_dict()})
+
+
+@companies_bp.route('/bus-companies', methods=["GET"])
+def get_companies():
+    """ Get registered bus companies """
+
+    companies = BusCompanies.query.filter_by(status='registered').all()
+
+    if companies == []:
+        return jsonify({"message": "No registered bus companies"}), 200
+    
+    return jsonify({"bus_companies": [company.to_dict() for company in companies]}), 200
+
+
+@companies_bp.route('/bus-companies/<int:id>', methods=["GET"])
+def view_company(id: int):
+    """ View a specific bus company """
+
+    company = BusCompanies.query.filter_by(id=id).first()
+    if not company:
+        return abort(400)
+    return jsonify({"bus_compnay": company.to_dict}), 200
+
+
+@companies_bp.route('/bus-companies/<int:id>/<action>')
+@admin_required
+def approve_company_registration(id: int, action: str):
+    """ Approve or reject company registration """
+    
+    if action.strip().lower() not in ['reject', 'approve']:
+        abort(400, description='action must be "approve" or "reject"')
+    
+    company = BusCompanies.query.filter_by(id=id).first()
+    if not company:
+        abort(400, description='bis company not found')
+    
+    company.status = "registered" if action.lower().strip() == 'approve' else company.status = 'rejected'
+
+    # TODO: send rejection or approveal email to the bus company
+
+    return jsonify({"message": f"{action}ed {company.id} registration"})
+
