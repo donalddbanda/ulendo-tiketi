@@ -1,4 +1,4 @@
-import secrets
+import random
 from app import db
 from .extensions import login
 from flask_login import UserMixin
@@ -14,7 +14,7 @@ class Users(db.Model, UserMixin):
     role = db.Column(db.String(100), nullable=False, default='passenger')
     phone_number = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(128), nullable=False)
 
     bookings = db.relationship('Bookings', backref='user', lazy=True)
 
@@ -246,18 +246,19 @@ class Transactions(db.Model):
         return f"<Transaction {self.id} | {self.amount}>"
 
 
-class PasswordResetTokens(db.Model):
+class PasswordResetCode(db.Model):
     __tablename__ = 'password_reset_tokens'
 
     id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String(100), nullable=False, unique=True)
+    email = db.Column(db.String(120), nullable=False)
+    code = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(min=10))
 
-    def create_token(self):
-        self.token = secrets.url_safe(50)
+    def create_code(self):
+        self.code = random.randrange(100000, 999999)
     
-    def is_token_valid(self):
+    def is_code_valid(self):
         return self.created_at < self.expires_at
     
     def __repr__(self):
