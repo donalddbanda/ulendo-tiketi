@@ -59,7 +59,7 @@ def view_company(id: int):
     return jsonify({"bus_compnay": company.to_dict}), 200
 
 
-@companies_bp.route('/bus-companies/<int:id>/<action>')
+@companies_bp.route('/bus-companies/<int:id>/<action>', methods=['POST', "PUT"])
 @admin_required
 def approve_company_registration(id: int, action: str):
     """ Approve or reject company registration """
