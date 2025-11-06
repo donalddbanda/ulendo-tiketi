@@ -1,82 +1,50 @@
 from app import db
-from app.models import Schedule, Bus, Route
-from flask import jsonify, request, Blueprint
-from flask_login import login_required
-from .auth import admin_or_company_required, company_not_required
+from app.models import Schedules
+from .auth import company_or_admin_required
+from flask import Blueprint, jsonify, request, request, abort
 
 
-schedules = Blueprint("schedule", __name__)
+schedules_bp = Blueprint('schedules', __name__)
 
-@schedules.route('/schedules', metjods=["POST"])
-@admin_or_company_required
-def create_schedule():
-    """ Create schedule for a bus """
+@schedules_bp.route('/schedule', methods=["POST"])
+@company_or_admin_required
+def schedule_bus():
+    """ Create a schedule for a bus """
 
     data = request.get_json()
-
     if not data:
-        return jsonify({"error": "data not provided"}), 400
-
-    bus_id = data.get("bus_id")
-    route_id = data.get("route_id")
-    departure_time = data.get("departure_time")
-    arrival_time = data.get("arrival_time")
-    price = data.get('price')
-
-
-    if not all([bus_id, price, departure_time, arrival_time, route_id]):
-        return jsonify({"error": "Provide route id, price, bus id, departure time, and arrival time"}), 400
+        abort(400, description='data not provided')
     
-    schedule = Schedule(
-        bus_id = bus_id,
-        price = price,
-        route_id = route_id,
-        departure_time = departure_time,
-        arrival_time = arrival_time
-    )
+    departure_time = data.get('departure_time')
+    arrival_time = data.get('arrival_time')
+    price = data.get('price')
+    route_id = data.get('route_id')
+    available_seats = data.get('available_seats')
+    bus_id = data.get('bus_id')
 
+    if not all([departure_time, arrival_time, price, available_seats, bus_id, route_id]):
+        abort(400, description='required data is missing')
+    
+    schedule = Schedules(
+        departure_time=departure_time, arrival_time=arrival_time, price=price,
+        available_seats=available_seats, route_id=route_id, bus_id=bus_id
+    )
     try:
         db.session.add(schedule)
         db.session.commit()
+    except:
+        abort(500)
 
-    except Exception as e:
-        return jsonify({"error": "Failed to schedule bus", "details": str(e)}), 500
-    
-    return jsonify({
-        "message": "Schedule successfully created",
-        "schedule": {
-            "id": schedule.id,
-            "bus_id": schedule.bus_id,
-            "departure_time": schedule.departure_time,
-            "arrival_time": schedule.arrival_time,
-            "price": schedule.price
-        }
-    }), 201
+    return jsonify({"message": "Schedule created", "schedule": schedule.to_dict()}), 201
 
 
-@schedules.route('/schedules', methods=["GET"])
-@company_not_required
-def get_schedule():
-    """ List all schedules """
+@schedules_bp.route('/schedules', methods=["GET"])
+def get_schedules():
+    """ Get all available schedules """
 
-    try:
-        schedules = Schedule.query.all()
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch schedules", "details": str(e)}), 500
+    schedules = Schedules.query.all()
+    if schedules == []:
+        return jsonify({"message": "schedules not available", "schedules": []})
 
-    if schedules == []: return jsonify({"message": "No available schedules"}), 200
-
-    return jsonify({
-        "schedlues": [
-            {
-                "id": schedule.id,
-                "bus_number": Bus.query.filter_by(id=schedule.bus_id).first().bus_number, 
-                "route": f"{Route.query.filter_by(id=schedule.route_id).first().origin} -- {Route.query.filter_by(id=schedule.route_id).first().destination}",
-                "departure_time": schedule.departure_time,
-                "arrival_time": schedule.arrival_time,
-                "price": schedule.price
-            } for schedule in schedules
-        ]
-    })
-
+    return jsonify({"schedules": [schedule.to_dict() for schedule in schedules]}), 200
 

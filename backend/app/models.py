@@ -140,15 +140,13 @@ class Schedules(db.Model):
     
     def to_dict(self):
         return {
-            "schedule": {
-                "id": self.id,
-                "departure_time": self.departure_time,
-                "arrival_time": self.arrival_time,
-                "route_id": self.route_id,
-                "bus_id": self.bus_id,
-                "price": self.price,
-                "available_seats": self.available_seats
-            }
+            "id": self.id,
+            "departure_time": self.departure_time.isoformat(),
+            "arrival_time": self.arrival_time.isoformat(),
+            "route_id": self.route_id,
+            "bus_id": self.bus_id,
+            "price": self.price,
+            "available_seats": self.available_seats
         }
 
 
@@ -203,8 +201,8 @@ class Payouts(db.Model):
                 "id": self.id,
                 "ammount": self.ammount,
                 "status": self.status,
-                "requested_at": self.requested_at,
-                "processed_at": self.processed_at,
+                "requested_at": self.requested_at.isoformat(),
+                "processed_at": self.processed_at.isoformat() if self.processed_at else None,
                 "company_id": self.company_id
             }
         }
