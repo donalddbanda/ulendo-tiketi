@@ -20,7 +20,7 @@ def create_route():
     destination = data.get('destination')
 
     if not all([origin, destination]):
-        abort(400, destination='provide origin and destination')
+        abort(400, description='provide origin and destination')
     
     route = Routes(origin=origin, destination=destination, distance=distance)
 

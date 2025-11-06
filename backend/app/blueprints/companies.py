@@ -24,7 +24,7 @@ def register_bus_company():
         abort(400, description='name, description, conatact_info, and account_details required')
     
     bus_company = BusCompanies(
-        name=name, descrption=description,
+        name=name, description=description,
         contact_info=contact_info, account_details=account_details
     )
 

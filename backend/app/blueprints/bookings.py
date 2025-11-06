@@ -40,7 +40,7 @@ def book_a_seat():
 def cancel_booking(booking_id: int):
     """ Cancel a booking """
 
-    booking = Bookings.query.filter_by(id=id).first()
+    booking = Bookings.query.filter_by(id=booking_id).first()
     if not booking:
         abort(400, description='booking not found')
     

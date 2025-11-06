@@ -169,7 +169,18 @@ class Bookings(db.Model):
         self.qrcode = f"{user_id}-{schedule_id}-{datetime.now().timestamp()}"
 
     def can_cancel(self):
-        return self.created_at < datetime.now(timezone.utc) - timedelta(hours=24)
+        """
+        Check if booking can be cancelled.
+        Bookings can only be cancelled if departure is more than 24 hours away.
+        """
+        # Get the schedule's departure time
+        if not self.schedule:
+            return False
+        
+        # Calculate the cancellation deadline (24 hours before departure)
+        cancellation_deadline = self.schedule.departure_time - timedelta(hours=24)
+        
+        return datetime.now(timezone.utc) < cancellation_deadline
 
 
     def to_dict(self):
@@ -258,4 +269,4 @@ class PasswordResetCode(db.Model):
         return self.created_at < self.expires_at
     
     def __repr__(self):
-        return f"<PasswordResetToken {self.id} | {self.token}>"
+        return f"<PasswordResetToken {self.id} | {self.email}>"

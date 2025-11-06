@@ -59,7 +59,7 @@ def login():
     phone_number = data.get('phone_number')
     password = data.get('password')
 
-    if not password and (not email or not phone_number):
+    if not password and (not email and not phone_number):
         abort(400, description='email or phone and password required')
     
     user = Users.query.filter_by(email=email).first() if email else Users.query.filter_by(phone_number=phone_number).first()
@@ -89,7 +89,7 @@ def logout():
 
 def create_password_reset_code(email):
     code = PasswordResetCode(email=email)
-    code.create_token()
+    code.create_code()
 
     try:
         db.session.add(code)
@@ -197,7 +197,7 @@ def passenger_or_admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonnnymous:
             abort(401)
-        if current_user.role.lower not in ['admin', 'passenger']:
+        if current_user.role.lower() not in ['admin', 'passenger']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
