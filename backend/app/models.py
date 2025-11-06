@@ -68,6 +68,9 @@ class BusCompanies(db.Column):
             "buses": self.buses.count()
         }
     
+    def can_add_bus(self):
+        return self.status == 'registered'
+    
     def __repr__(self):
         return f"<Company {self.id}|{self.name}>"
 

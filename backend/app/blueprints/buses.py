@@ -1,69 +1,53 @@
 from app import db
 from flask_login import current_user
-from app.models import Bus, BusCompany
-from flask import Blueprint, request, jsonify
-from .auth import admin_or_user_required, admin_or_company_required
+from app.models import Buses, BusCompanies
+from .auth import company_or_admin_required
+from flask import jsonify, Blueprint, abort, request
 
 
-bus = Blueprint("bus", __name__)
+buses_bp = Blueprint('buses', __name__)
 
-
-@bus.route('/bus', methods=["POST"])
-@admin_or_company_required
+@buses_bp.route('/buses', methods=["POST"])
+@company_or_admin_required
 def add_bus():
+    """ Add bus (admin or company) """
+
+    if current_user.role.lower().strip() == 'company' and not current_user.can_add_bus():
+        return jsonify({"message": "company not registered to add bus"}), 403
+    
     data = request.get_json()
+    if not data:
+        abort(400, description='data not provided')
 
     bus_number = data.get('bus_number')
-    company_id = data.get("company_id")
-    seating_capacity = data.get("seating_capacity")
+    seating_capacity = data.get('seating_capacity')
+    company_id = data.get('company_id', None)
 
-    if not all([bus_number, seating_capacity]):
-        return jsonify({"error": "Bus number and seating capacity is required"}), 400
-
-    if current_user.role.lower() == 'admin' and not data.get('company_id'):
-        return jsonify({"error": "Company ID is required"}), 400
+    if not all(bus_number, seating_capacity):
+        abort(400, description='bus number and seating capacity is required')
     
-    if current_user.role.lower() == 'admin':
-        if BusCompany.query.filter_by(id=data.get('company_id')).first():
-            return jsonify({"error": "Invalid company ID"}), 400
+    if current_user.role.lower().strip() == 'admin' and company_id == None:
+        abort(400, description='admins must provide company_id')
     
-    bus = Bus(
-        bus_company_id = current_user.id if current_user.role.lower == 'company' else company_id,
-        bus_number = bus_number,
-        seating_capacity = seating_capacity
-    )
+    bus = Buses(bus_number=bus_number, seating_capacity=seating_capacity)
+    bus.company_id = current_user.id if current_user.role.lower().strip() == 'company'\
+    else bus.company_id = company_id
 
     try:
         db.session.add(bus)
         db.session.commit()
-    except Exception as e:
-        return jsonify({"error": "Failed to add bus", "details": str(e)}), 500
+    except:
+        abort(500)
     
-    return jsonify({
-        "message": "Bus successfuly addded",
-        "bus": {
-            "id": id,
-            "bus_number": bus_number,
-            "bus_company_id": company_id,
-            "seating_capacity": seating_capacity
-        }
-    })
+    return jsonify({"message": "bus successfuly added", "bus": bus.to_dict()})
 
 
-@bus.route('/bus', methods=['GET'])
-@admin_or_user_required
+@buses_bp.route('/buses', methods=["GET"])
 def get_buses():
-    buses = Bus.query.all()
-
-    if buses == []:
-        return jsonify({"message": "Buses not available"}), 200
+    """ Get all buses from registered companies """
     
-    return jsonify({
-        'buses': [{
-            "bus_id": bus.id,
-            "bus_number": bus.bus_number,
-            "seating_capacity": bus.seating_capacity,
-            "owner": bus.bus_company.name
-        } for bus in buses]
-    }), 200
+    buses = Buses.query.all()
+    if buses == []:
+        return jsonify({"message": "no buses found", "buses": []})
 
+    return jsonify({"buses": [bus.to_dict() for bus in buses]})
