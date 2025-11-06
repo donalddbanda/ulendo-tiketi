@@ -1,57 +1,4 @@
 import os
-<<<<<<< HEAD
-from flask import Flask
-from .extensions import db, migrate, login, mail
-from .config import DevelopmentConfig, ProductionConfig
-from app.models import User, BusCompany, Bus, Route, Schedule, Booking, Payment, Cashout
-
-def create_app(config_class=None):
-    
-    app = Flask(__name__)
-
-    env = os.getenv('FLASK_ENV', 'production')
-    if config_class == "development" or env == 'development':
-        app.config.from_object(DevelopmentConfig)
-    else:
-        app.config.from_object(ProductionConfig)
-
-    # Initialize extensions here (e.g., database, migrations, etc.)
-    db.init_app(app)
-    migrate.init_app(app, db)
-    login.init_app(app)
-    mail.init_app(app)
-
-    # Register blueprints here
-    from .blueprints.auth import auth
-    from .blueprints.buses import bus
-    from .blueprints.routes import routes
-    from .blueprints.companies import company
-    from .blueprints.schedules import schedules
-
-    app.register_blueprint(auth)
-    app.register_blueprint(bus)
-    app.register_blueprint(routes)
-    app.register_blueprint(company)
-    app.register_blueprint(schedules)
-
-    # --- Shell Context ---
-    @app.shell_context_processor
-    def make_shell_context():
-        return {
-            'db': db,
-            'User': User,
-            'BusCompany': BusCompany,
-            'Bus': Bus,
-            'Route': Route,
-            'Schedule': Schedule,
-            'Booking': Booking,
-            'Payment': Payment,
-            'Cashout': Cashout
-        }
-
-    return app
-
-=======
 import logging
 from flask import Flask, jsonify
 from app.config import get_config
@@ -103,28 +50,28 @@ def initialize_extensions(app: Flask) -> None:
     mail.init_app(app)
 
 
-# def register_blueprints(app: Flask) -> None:
-#     """Register all application blueprints."""
-#     from app.blueprints.auth import auth_bp
-#     from app.blueprints.companies import companies_bp
-#     from app.blueprints.buses import buses_bp
-#     from app.blueprints.routes import routes_bp
-#     from app.blueprints.schedules import schedules_bp
-#     from app.blueprints.bookings import bookings_bp
-#     from app.blueprints.search import search_bp
-#     from app.blueprints.payments import payments_bp
-#     from app.blueprints.payouts import payouts_bp
+def register_blueprints(app: Flask) -> None:
+    """Register all application blueprints."""
+    from app.blueprints.auth import auth_bp
+    # from app.blueprints.companies import companies_bp
+    # from app.blueprints.buses import buses_bp
+    # from app.blueprints.routes import routes_bp
+    # from app.blueprints.schedules import schedules_bp
+    # from app.blueprints.bookings import bookings_bp
+    # from app.blueprints.search import search_bp
+    # from app.blueprints.payments import payments_bp
+    # from app.blueprints.payouts import payouts_bp
     
-#     # Register blueprints with URL prefix
-#     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-#     app.register_blueprint(companies_bp, url_prefix='/api/companies')
-#     app.register_blueprint(buses_bp, url_prefix='/api/buses')
-#     app.register_blueprint(routes_bp, url_prefix='/api/routes')
-#     app.register_blueprint(schedules_bp, url_prefix='/api/schedules')
-#     app.register_blueprint(bookings_bp, url_prefix='/api/bookings')
-#     app.register_blueprint(search_bp, url_prefix='/api/search')
-#     app.register_blueprint(payments_bp, url_prefix='/api/payments')
-#     app.register_blueprint(payouts_bp, url_prefix='/api/payouts')
+    # Register blueprints with URL prefix
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    # app.register_blueprint(companies_bp, url_prefix='/api/companies')
+    # app.register_blueprint(buses_bp, url_prefix='/api/buses')
+    # app.register_blueprint(routes_bp, url_prefix='/api/routes')
+    # app.register_blueprint(schedules_bp, url_prefix='/api/schedules')
+    # app.register_blueprint(bookings_bp, url_prefix='/api/bookings')
+    # app.register_blueprint(search_bp, url_prefix='/api/search')
+    # app.register_blueprint(payments_bp, url_prefix='/api/payments')
+    # app.register_blueprint(payouts_bp, url_prefix='/api/payouts')
     
     # Register root endpoint
     @app.route('/')
@@ -298,4 +245,3 @@ def check_database_connection() -> bool:
         return True
     except Exception:
         return False
->>>>>>> 8d0becc (feat: Enhance backend configuration and application setup and created database tables in the models.py file)

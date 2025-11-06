@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import jwt
 from app import db
 from functools import wraps
@@ -127,10 +128,178 @@ def admin_required(f):
             return jsonify({"error": "Authentication required"}), 401
         if current_user.role.lower() != 'admin':
             return jsonify({"error": "Admin access required"}), 403
+=======
+import threading
+from app import db
+from functools import wraps
+from app.models import Users, PasswordResetCode
+from flask import request, jsonify, abort, Blueprint
+from flask_login import current_user, login_required, logout_user
+from ..utils.email_services import send_password_reset_code_email
+
+
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/register', methods=["POST"])
+def register():
+    if current_user.is_authenticated:
+        logout_user()
+        return jsonify({"message": "you have been logged out"}), 200
+    
+    data = request.get_json()
+    if not data:
+        abort(400, description='data not provided')
+    
+    name = data.get('name')
+    email = data.get('email')
+    role = data.get('role', 'passenger')
+    password = data.get('password')
+    phone_number = data.get('phone_number')
+
+    if not all([name, phone_number, password]):
+        abort(400, description='name, phone number, and password are required')
+    
+    user = Users(name=name, email=email, phone_number=phone_number, role=role)
+    user.set_password(password)
+
+    try:
+        db.session.add(user)
+        db.session.commit()
+    except Exception as e:
+        abort(500, description=str(e))
+    
+    return jsonify({
+        "message": "account registered",
+        "user":{ 
+            "id": user.id,
+            "name": user.name,
+            "email": user.name,
+            "phone_number": user.phone_number,
+            "role": user.role
+        }
+    })
+
+@auth_bp.route('/login', methods=["POST"])
+def login():
+    if current_user.is_authenticated:
+        abort(400, description='You are already logged in')
+    
+    data = request.get_json()
+
+    email = data.get('email')
+    phone_number = data.get('phone_number')
+    password = data.get('password')
+
+    if not password and email or phone_number:
+        abort(400, description='email or phone and password required')
+    
+    user = Users.query.filter_by(email=email).first() if email else Users.query.filter_by(phone_number=phone_number).first()
+
+    if not user.verify_password(password):
+        abort(400, description='Invalid login credentials')
+    
+    return jsonify({
+        "message": "Login successful",
+        "user": {
+            "id": id,
+            "name": user.name,
+            "role": user.role
+        }
+    })
+        
+
+@auth_bp.route('/logout', methods=["POST"])
+@login_required
+def logout():
+    logout_user()
+    return jsonify({"message": "Logout successful"})
+
+
+def create_password_reset_code(email):
+    code = PasswordResetCode(email=email)
+    code.create_token()
+
+    try:
+        db.session.add(code)
+        db.session.commit()
+    except Exception as e:
+        abort(500, description=str(e))
+    
+    return code.code
+
+
+@auth_bp.route('/reset-password/request', methods=["POST"])
+def request_password_reset():
+    data = request.get_json()
+    if not data:
+        abort(400, description='data not provided')
+    
+    email = data.get('email')
+    if not email:
+        abort(400, description='email required')
+
+    if not Users.query.filter_by(email=email).first():
+        abort(400, description='account not found')
+
+    code = create_password_reset_code(email=email)
+    
+    # Create a thread to send emails in the background
+    thread = threading.Thread(
+        target=send_password_reset_code_email,
+        args=(code, email)
+    )
+    thread.start()
+
+    return jsonify({"message": "Password reset code sent. Check your spam if you haven't recieved it."}), 200
+
+
+@auth_bp.route('/rest-password', methods=["POST"])
+def reset_password():
+    data = request.get_json()
+    if not data:
+        abort(400, description='data not provided')
+    
+    code = data.get('code')
+    new_password = data.get('new_password')
+    confirm_new__password = data.get('confirm_new__password')
+    
+    if not all([code, new_password, confirm_new__password]):
+        abort(400, description='code, new password and password confirmation required')
+    
+    if new_password != confirm_new__password:
+        abort(400, description='passwords do not match')
+
+    query_code = PasswordResetCode.query.filter_by(code=code).first()
+    if not query_code or  not query_code.is_code_valid():
+        abort(400, description='invalid code')
+    
+    user = Users.query.filter_by(email=query_code.email).first()
+    if not user:
+        abort(400, description='account not found')
+    
+    user.set_password(new_password)
+    try:
+        db.session.commit()
+    except:
+        abort(500)
+    
+    return jsonify({"message": "password reset successful"}), 200
+
+
+# ROLE BASED ACCESS
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonnnymous:
+            abort(401)
+        if current_user.role.lower != 'admin':
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
 
+<<<<<<< HEAD
 def user_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -138,6 +307,15 @@ def user_required(f):
             return jsonify({"error": "Authentication required"}), 401
         if current_user.role.lower() != 'user':
             return jsonify({"error": "User access required"}), 403
+=======
+def passenger_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonnnymous:
+            abort(401)
+        if current_user.role.lower != 'passenger':
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -145,14 +323,22 @@ def user_required(f):
 def company_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+<<<<<<< HEAD
         if not current_user.is_authenticated:
             return jsonify({"error": "Authentication required"}), 401
         if current_user.role.lower() != 'compnay':
             return jsonify({"error": "Company access required"}), 403
+=======
+        if current_user.is_anonnnymous:
+            abort(401)
+        if current_user.role.lower != 'company':
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
 
+<<<<<<< HEAD
 def admin_or_user_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -160,10 +346,20 @@ def admin_or_user_required(f):
             return jsonify({"error": "Authentication required"}), 401
         if current_user.role.lower() not in ['user', 'admin']:
             return jsonify({"error": "Admin or User access required"}), 403
+=======
+def passenger_or_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonnnymous:
+            abort(401)
+        if current_user.role.lower not in ['admin', 'passenger']:
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
 
+<<<<<<< HEAD
 def admin_or_company_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -171,6 +367,15 @@ def admin_or_company_required(f):
             return jsonify({"error": "Authentication required"}), 401
         if current_user.role.lower() not in ['company', 'admin']:
             return jsonify({"error": "Admin or Company access required"}), 403
+=======
+def company_or_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonnnymous:
+            abort(401)
+        if current_user.role.lower not in ['admin', 'company']:
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -178,8 +383,13 @@ def admin_or_company_required(f):
 def company_not_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+<<<<<<< HEAD
         if current_user.is_authenticated and current_user.role.lower() not in ['user', 'admin']:
             return jsonify({"error": "Company access is restricted"}), 403
+=======
+        if current_user.is_anthenticated and current_user.role.lower == 'company':
+            abort(403)
+>>>>>>> ef7ae71 (feat: Implement user authentication and password reset functionality)
         return f(*args, **kwargs)
     return decorated_function
 
