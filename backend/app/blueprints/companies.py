@@ -1,7 +1,7 @@
 from app import db
-from .auth import admin_required
 from app.models import BusCompanies
 from flask import Blueprint, request, jsonify, abort
+from .auth import admin_required, company_or_admin_required
 
 
 companies_bp = Blueprint('companies', __name__)
@@ -76,4 +76,32 @@ def approve_company_registration(id: int, action: str):
     # TODO: send rejection or approveal email to the bus company
 
     return jsonify({"message": f"{action}ed {company.id} registration"})
+
+
+@companies_bp.route('/bus-companies/<int:id>', methods=["PUT", "POST"])
+@company_or_admin_required
+def update_company_info(id: int):
+    """ update company details """
+
+    company = BusCompanies.query.filter_by(id=id).first()
+    if not company:
+        abort(400, description='company not found')
+
+    data = request.get_json()
+    if not data:
+        abort(400, description='data not provided')
+
+    name = data.get('name', company.name)
+    description = data.get('description', company.description)
+    account_details = data.get('account_details', company.account_details)
+    contact_info = data.get('contact_info', company.contact_info)
+
+    company.name, company.description, company.account_details, company.contact_info = name, description, account_details, contact_info
+
+    try: 
+        db.session.commit()
+    except:
+        abort(500)
+    
+    return jsonify({"message": "company details updated", "bus_company": company.to_dict()}), 201
 
