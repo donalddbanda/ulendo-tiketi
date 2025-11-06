@@ -1,90 +1,37 @@
-import json
 from app import db
-from ..models import BusCompany
-from flask import Blueprint, request, jsonify
-from .auth import admin_required, admin_or_user_required
+from .auth import admin_required
+from app.models import BusCompanies
+from flask import Blueprint, request, jsonify, abort
 
 
-company = Blueprint("bookin", __name__)
+companies_bp = Blueprint('companies', __name__)
 
-@company.route('/bus-company', methods=["POST"])
+@companies_bp.route('/bus-companies', methods=["POST"])
 @admin_required
-def create_company():
-    """ Create a bus company"""
+def register_bus_company():
+    """ Register bus company """
 
     data = request.get_json()
     if not data:
-        return jsonify({"error": "data not provided"}), 400
+        abort(400, description='data not provided')
 
     name = data.get('name')
     description = data.get('description')
     contact_info = data.get('contact_info')
     account_details = data.get('account_details')
 
-    if not all([name, description, account_details, contact_info]):
-        return jsonify({"error": "Provide name, description, contact details, and account details"}), 400
-
-    if BusCompany.query.filter_by(name=name).first():
-        return jsonify({"error": "Bus company name already exists"}), 400
-
-    bus_company = BusCompany(
-        name=name,
-        account_details=json.dumps(account_details),
-        description=description,
-        contact_info=json.dumps(contact_info)
+    if not all([name, description, contact_info, account_details]):
+        abort(400, description='name, description, conatact_info, and account_details required')
+    
+    bus_company = BusCompanies(
+        name=name, descrption=description,
+        contact_info=contact_info, account_details=account_details
     )
 
     try:
         db.session.add(bus_company)
         db.session.commit()
+    except:
+        abort(500)
     
-    except Exception as e:
-        return jsonify({"error": "Failed to create bus company", "details": str(e)}), 500
-
-    return jsonify({
-        "message": "Bus company created",
-        "company": {
-            "id": bus_company.id,
-            "name": bus_company.name,
-            "description": bus_company.description,
-            "contact_info": bus_company.contact_info,
-            "account_details": bus_company.account_details
-        }
-    }), 201
-
-
-@company.route('/bus-company', methods=["GET"])
-@admin_or_user_required
-def get_bus_companies():
-    bus_companies = BusCompany.query.all()
-
-    return jsonify({
-        "bus_companies": [
-            {
-                "id": bus_company.id,
-                "name": bus_company.name,
-                "description": bus_company.description,
-                "contact_info": bus_company.contact_info,
-            } 
-            for bus_company in bus_companies
-        ]
-    }), 200
-
-
-@company.route('/bus-company/<int:id>')
-def get_bus_company(id: int):
-    """ Get a specific bus company """
-
-    bus_company = BusCompany.query.get(id)
-
-    if not bus_company:
-        return jsonify({"error": "Bus company not found"}), 404
-    
-    return jsonify({
-        "id": bus_company.id,
-        "name": bus_company.name,
-        "description": bus_company.description,
-        "contact_info": bus_company.contact_info,
-    }), 200
-
-
+    return jsonify({"message": "bus company created", "company": bus_company.to_dict()})

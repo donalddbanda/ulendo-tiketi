@@ -54,7 +54,7 @@ def register_blueprints(app: Flask) -> None:
     """Register all application blueprints."""
     from app.blueprints.auth import auth_bp
     from app.blueprints.users import users_bp
-    # from app.blueprints.companies import companies_bp
+    from app.blueprints.companies import companies_bp
     # from app.blueprints.buses import buses_bp
     # from app.blueprints.routes import routes_bp
     # from app.blueprints.schedules import schedules_bp
@@ -66,7 +66,7 @@ def register_blueprints(app: Flask) -> None:
     # Register blueprints with URL prefix
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
-    # app.register_blueprint(companies_bp, url_prefix='/api/companies')
+    app.register_blueprint(companies_bp, url_prefix='/api/companies')
     # app.register_blueprint(buses_bp, url_prefix='/api/buses')
     # app.register_blueprint(routes_bp, url_prefix='/api/routes')
     # app.register_blueprint(schedules_bp, url_prefix='/api/schedules')

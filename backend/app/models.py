@@ -59,15 +59,13 @@ class BusCompanies(db.Column):
 
     def to_dict(self):
         return {
-            "company": {
-                "id": self.id,
-                "name": self.name,
-                "description": self.description,
-                "contact_info": self.contact_info,
-                "account_details": self.account_details,
-                "status": self.status,
-                "buses": self.buses.count()
-            }
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "contact_info": self.contact_info,
+            "account_details": self.account_details,
+            "status": self.status,
+            "buses": self.buses.count()
         }
     
     def __repr__(self):
@@ -90,12 +88,10 @@ class Buses(db.Model):
     
     def to_dict(self):
         return {
-            "bus": {
-                "id": self.id,
-                "bus_number": self.bus_number,
-                "seating_capacity": self.seating_capacity,
-                "company_id": self.company_id
-            }
+            "id": self.id,
+            "bus_number": self.bus_number,
+            "seating_capacity": self.seating_capacity,
+            "company_id": self.company_id
         }
 
 
@@ -115,12 +111,10 @@ class Routes(db.Model):
 
     def to_dict(self):
         return {
-            "Route": {
-                "id": self.id,
-                "origin": self.origin,
-                "destination": self.destination,
-                "distance": self.distance
-            }
+            "id": self.id,
+            "origin": self.origin,
+            "destination": self.destination,
+            "distance": self.distance
         }
 
 
