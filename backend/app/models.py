@@ -155,7 +155,7 @@ class Bookings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
-    qrcode = db.Column(db.String(100), nullable=True)
+    qrcode = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
@@ -165,19 +165,20 @@ class Bookings(db.Model):
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
+    def create_qrcode(self, user_id, schedule_id):
+        self.qrcode = f"{user_id}-{schedule_id}-{datetime.now().timestamp()}"
+
     def can_cancel(self):
         return self.created_at < datetime.now(timezone.utc) - timedelta(hours=24)
 
 
     def to_dict(self):
         return {
-            "booking": {
-                "id": self.id,
-                "status": self.status,
-                "qrcode": self.qrcode,
-                "schedule_id": self.schedule_id,
-                "user_id": self.user_id
-            }
+            "id": self.id,
+            "status": self.status,
+            "qrcode": self.qrcode,
+            "schedule_id": self.schedule_id,
+            "user_id": self.user_id
         }
 
     def __repr__(self):
