@@ -71,7 +71,7 @@ def approve_company_registration(id: int, action: str):
     if not company:
         abort(400, description='bis company not found')
     
-    company.status = "registered" if action.lower().strip() == 'approve' else company.status = 'rejected'
+    company.status = "registered" if action.lower().strip() == 'approve' else 'rejected'
 
     # TODO: send rejection or approveal email to the bus company
 

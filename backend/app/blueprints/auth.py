@@ -42,7 +42,7 @@ def register():
         "user":{ 
             "id": user.id,
             "name": user.name,
-            "email": user.name,
+            "email": user.email,
             "phone_number": user.phone_number,
             "role": user.role
         }
@@ -59,10 +59,13 @@ def login():
     phone_number = data.get('phone_number')
     password = data.get('password')
 
-    if not password and email or phone_number:
+    if not password and (not email or not phone_number):
         abort(400, description='email or phone and password required')
     
     user = Users.query.filter_by(email=email).first() if email else Users.query.filter_by(phone_number=phone_number).first()
+
+    if not user:
+        abort(400, description='account not found')
 
     if not user.verify_password(password):
         abort(400, description='Invalid login credentials')
@@ -70,7 +73,7 @@ def login():
     return jsonify({
         "message": "Login successful",
         "user": {
-            "id": id,
+            "id": user.id,
             "name": user.name,
             "role": user.role
         }
@@ -159,9 +162,9 @@ def reset_password():
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_anonnnymous:
+        if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower != 'admin':
+        if current_user.role.lower() != 'admin':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -214,7 +217,7 @@ def company_or_admin_required(f):
 def company_not_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_anthenticated and current_user.role.lower == 'company':
+        if current_user.is_authenticated and current_user.role.lower() == 'company':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

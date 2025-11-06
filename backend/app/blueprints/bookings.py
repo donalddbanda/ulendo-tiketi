@@ -37,7 +37,7 @@ def book_a_seat():
 
 @bookings_bp.route('/bookings/<int:booking_id>/cancel', methods=["POST"])
 @passenger_required
-def cancel_booking(id: int):
+def cancel_booking(booking_id: int):
     """ Cancel a booking """
 
     booking = Bookings.query.filter_by(id=id).first()

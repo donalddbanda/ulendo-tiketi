@@ -20,7 +20,7 @@ def create_app(config_name: str = None) -> Flask:
     initialize_extensions(app)
     
     # Register blueprints
-    # register_blueprints(app)
+    register_blueprints(app)
     
     # Setup logging
     # setup_logging(app)

@@ -4,7 +4,9 @@ from .auth import admin_required
 from flask import Blueprint, jsonify, request, abort
 
 
-routes_bp = Blueprint('routes', methods=["POST"])
+routes_bp = Blueprint('routes', __name__)
+
+@routes_bp.route('/routes', methods=["POST"])
 @admin_required
 def create_route():
     """ Create route """

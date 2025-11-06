@@ -23,15 +23,14 @@ def add_bus():
     seating_capacity = data.get('seating_capacity')
     company_id = data.get('company_id', None)
 
-    if not all(bus_number, seating_capacity):
+    if not all([bus_number, seating_capacity]):
         abort(400, description='bus number and seating capacity is required')
     
     if current_user.role.lower().strip() == 'admin' and company_id == None:
         abort(400, description='admins must provide company_id')
     
     bus = Buses(bus_number=bus_number, seating_capacity=seating_capacity)
-    bus.company_id = current_user.id if current_user.role.lower().strip() == 'company'\
-    else bus.company_id = company_id
+    bus.company_id = current_user.id if current_user.role.lower().strip() == 'company' else company_id
 
     try:
         db.session.add(bus)
