@@ -1,68 +1,31 @@
 from app import db
-from app.models import Route
-from flask import request, jsonify, Blueprint
-from .auth import admin_required, company_not_required
+from app.models import Routes
+from .auth import admin_required
+from flask import Blueprint, jsonify, request, abort
 
 
-routes = Blueprint('route', __name__)
-
-@routes.route('/routes', methods=["POST"])
+routes_bp = Blueprint('routes', methods=["POST"])
 @admin_required
 def create_route():
-    """ Create a route """
+    """ Create route """
 
     data = request.get_json()
-
     if not data:
-        return jsonify({"error": "Data not provided"}), 400
-
+        abort(400, description='data not provided')
+    
     origin = data.get('origin')
-    destination = data.get('destination')
     distance = data.get('distance')
+    destination = data.get('destination')
 
     if not all([origin, destination]):
-        return jsonify({"error": "Origin and destination must be provided"}), 400
-
-    route = Route(origin=origin, destination=destination, distance=distance)
-
-    try: 
-        db.session.add(route)
-        db.session.commit()
-
-    except Exception as e:
-        return jsonify({"error": "Failed to create route", "details": str(e)}), 500
-
-    return jsonify({
-        "message": "Route added successfully",
-        "route": {
-            "id": route.id,
-            "origin": route.origin,
-            "destination": route.destination,
-            "distance": route.distance
-        }
-    })
-
-
-@routes.route('/routes', methods=["GET"])
-def get_routes():
-    """ Get routes """
+        abort(400, destination='provide origin and destination')
+    
+    route = Routes(origin=origin, destination=destination, distance=distance)
 
     try:
-        routes = Route.query.all()
+        db.session.add(route)
+        db.session.commit()
+    except:
+        abort(400)
     
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch routes"}), 500
-
-    if routes == []:
-        return jsonify({"message": "Routes not available"}), 200
-    
-    return jsonify({
-        "routes": [
-            {
-                "id": route.id,
-                "origin": route.orign,
-                "destination": route.destination,
-                "distance": route.distance
-            } for route in routes
-        ]
-    })
+    return jsonify({"message": "route created", "route": route.to_dict()}), 201
