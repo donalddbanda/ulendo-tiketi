@@ -2,6 +2,7 @@ flask
 flask-login
 flask-Mail
 flask-CORS
+flask-migrate
 flask-sqlalchemy
 python-dotenv
 paychangu
