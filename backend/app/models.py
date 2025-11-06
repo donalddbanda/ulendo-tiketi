@@ -44,7 +44,7 @@ def load_user(user_id:int):
     return Users.query.get(int(user_id))
 
 
-class BusCompanies(db.Column):
+class BusCompanies(db.Model):
     __tablename__ = 'bus_companies'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -55,7 +55,7 @@ class BusCompanies(db.Column):
     status = db.Column(db.Boolean, default='pending', index=True)
 
     buses = db.relationship('Buses', backref='company', lazy=True)
-    payouts = db.relationship('Payoutz', backref='company', lazy=True)
+    payouts = db.relationship('Payouts', backref='company', lazy=True)
 
     def to_dict(self):
         return {
@@ -217,7 +217,7 @@ class Transactions(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), nullable=False, defaulr='pending', index=True)
+    status = db.Column(db.String(50), nullable=False, default='pending', index=True)
     method = db.Column(db.String(50), nullable=False)
     reference = db.Column(db.String(100), nullable=False)
     payment_status = db.Column(db.String(50), nullable=False)
@@ -249,7 +249,7 @@ class PasswordResetCode(db.Model):
     email = db.Column(db.String(120), nullable=False)
     code = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
-    expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(min=10))
+    expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(minutes=10))
 
     def create_code(self):
         self.code = random.randrange(100000, 999999)
