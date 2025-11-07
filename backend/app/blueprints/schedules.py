@@ -1,7 +1,7 @@
 from app import db
 from app.models import Schedules
 from .auth import company_or_admin_required
-from flask import Blueprint, jsonify, request, request, abort
+from flask import Blueprint, jsonify, request, abort
 
 
 schedules_bp = Blueprint('schedules', __name__)

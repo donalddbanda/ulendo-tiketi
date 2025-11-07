@@ -176,7 +176,7 @@ def passenger_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower != 'passenger':
+        if current_user.role.lower() != 'passenger':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -187,7 +187,7 @@ def company_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower != 'company':
+        if current_user.role.lower() != 'company':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -209,7 +209,7 @@ def company_or_admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower not in ['admin', 'company']:
+        if current_user.role.lower() not in ['admin', 'company']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

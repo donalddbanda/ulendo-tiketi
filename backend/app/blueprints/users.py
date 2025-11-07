@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, abort
 
 users_bp = Blueprint('users', __name__)
 
-@users_bp.route('/users/<int:id>', methods=["GET"])
+@users_bp.route('/get/<int:id>', methods=["GET"])
 @passenger_or_admin_required
 def get_user(id: int):
     """ fetch user details """
@@ -24,7 +24,7 @@ def get_user(id: int):
     return jsonify(user.to_dict())
 
 
-@users_bp.route('/users/<int:id>', methods=['PUT', 'POST'])
+@users_bp.route('/update/<int:id>', methods=['PUT', 'POST'])
 @passenger_or_admin_required
 def update_user(id: int):
     """ update user info """

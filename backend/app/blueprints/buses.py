@@ -5,7 +5,7 @@ from .auth import company_or_admin_required
 from flask import jsonify, Blueprint, abort, request
 
 
-buses_bp = Blueprint('buses', __name__)
+buses_bp = Blueprint('added', __name__)
 
 @buses_bp.route('/buses', methods=["POST"])
 @company_or_admin_required
@@ -26,6 +26,9 @@ def add_bus():
     if not all([bus_number, seating_capacity]):
         abort(400, description='bus number and seating capacity is required')
     
+    if Buses.query.filter_by(bus_number=bus_number).first():
+        abort(400, description='Bus with this number already exists.')
+    
     if current_user.role.lower().strip() == 'admin' and company_id == None:
         abort(400, description='admins must provide company_id')
     
@@ -38,10 +41,10 @@ def add_bus():
     except:
         abort(500)
     
-    return jsonify({"message": "bus successfuly added", "bus": bus.to_dict()})
+    return jsonify({"message": "bus successfuly added", "bus": bus.to_dict()}), 201
 
 
-@buses_bp.route('/buses', methods=["GET"])
+@buses_bp.route('/get-buses', methods=["GET"])
 def get_buses():
     """ Get all buses from registered companies """
     

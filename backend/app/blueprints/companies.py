@@ -1,12 +1,14 @@
 from app import db
 from app.models import BusCompanies
+from flask_login import current_user
+from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, request, jsonify, abort
 from .auth import admin_required, company_or_admin_required
 
 
 companies_bp = Blueprint('companies', __name__)
 
-@companies_bp.route('/bus-companies', methods=["POST"])
+@companies_bp.route('/register', methods=["POST"])
 @admin_required
 def register_bus_company():
     """ Register bus company """
@@ -23,6 +25,9 @@ def register_bus_company():
     if not all([name, description, contact_info, account_details]):
         abort(400, description='name, description, conatact_info, and account_details required')
     
+    if BusCompanies.query.filter_by(name=name).first():
+        abort(400, description=f'A company named "{name}" already exists.')
+    
     bus_company = BusCompanies(
         name=name, description=description,
         contact_info=contact_info, account_details=account_details
@@ -31,13 +36,17 @@ def register_bus_company():
     try:
         db.session.add(bus_company)
         db.session.commit()
-    except:
-        abort(500)
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description='A company with this name or unique details already exists.')
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description='An unexpected error occurred during database operation.')
     
     return jsonify({"message": "bus company created", "company": bus_company.to_dict()})
 
 
-@companies_bp.route('/bus-companies', methods=["GET"])
+@companies_bp.route('/get', methods=["GET"])
 def get_companies():
     """ Get registered bus companies """
 
@@ -56,10 +65,10 @@ def view_company(id: int):
     company = BusCompanies.query.filter_by(id=id).first()
     if not company:
         return abort(400)
-    return jsonify({"bus_compnay": company.to_dict}), 200
+    return jsonify({"bus_compnay": company.to_dict()}), 200
 
 
-@companies_bp.route('/bus-companies/<int:id>/<action>', methods=['POST', "PUT"])
+@companies_bp.route('/review/<int:id>/<action>', methods=['POST', "PUT"])
 @admin_required
 def approve_company_registration(id: int, action: str):
     """ Approve or reject company registration """
@@ -69,16 +78,20 @@ def approve_company_registration(id: int, action: str):
     
     company = BusCompanies.query.filter_by(id=id).first()
     if not company:
-        abort(400, description='bis company not found')
+        abort(400, description='bus company not found')
     
     company.status = "registered" if action.lower().strip() == 'approve' else 'rejected'
+    try:
+        db.session.commit()
+    except:
+        abort(500)
 
     # TODO: send rejection or approveal email to the bus company
 
     return jsonify({"message": f"{action}ed {company.id} registration"})
 
 
-@companies_bp.route('/bus-companies/<int:id>', methods=["PUT", "POST"])
+@companies_bp.route('/get/<int:id>', methods=["PUT", "POST"])
 @company_or_admin_required
 def update_company_info(id: int):
     """ update company details """
@@ -86,6 +99,9 @@ def update_company_info(id: int):
     company = BusCompanies.query.filter_by(id=id).first()
     if not company:
         abort(400, description='company not found')
+
+    if current_user.role == 'company' and current_user.id != company.id:
+        abort(403, description='You can only update your own company info.')
 
     data = request.get_json()
     if not data:
@@ -98,10 +114,13 @@ def update_company_info(id: int):
 
     company.name, company.description, company.account_details, company.contact_info = name, description, account_details, contact_info
 
-    try: 
+    try:
         db.session.commit()
-    except:
-        abort(500)
-    
-    return jsonify({"message": "company details updated", "bus_company": company.to_dict()}), 201
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description='Company with this name already exists.')
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description=str(e))
 
+    return jsonify({"message": "company info updated", "company": company.to_dict()}), 200

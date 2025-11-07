@@ -29,6 +29,7 @@ def create_route():
         db.session.commit()
     except:
         abort(400)
+        db.session.rollback()
     
     return jsonify({"message": "route created", "route": route.to_dict()}), 201
 
