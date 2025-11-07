@@ -41,7 +41,8 @@ def register_bus_company():
         abort(400, description='A company with this name or unique details already exists.')
     except Exception as e:
         db.session.rollback()
-        abort(500, description='An unexpected error occurred during database operation.')
+        # abort(500, description='An unexpected error occurred during database operation.')
+        return jsonify({"message": "An unexpected error occurred during database operation.", "error": str(e)}), 500
     
     return jsonify({"message": "bus company created", "company": bus_company.to_dict()})
 

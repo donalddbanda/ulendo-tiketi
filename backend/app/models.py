@@ -52,7 +52,7 @@ class BusCompanies(db.Model):
     description = db.Column(db.String(100), nullable=False)
     contact_info = db.Column(db.JSON, nullable=False)
     account_details = db.Column(db.JSON, nullable=False)
-    status = db.Column(db.Boolean, default='pending', index=True)
+    status = db.Column(db.String(50), default='pending', index=True)
     balance = db.Column(db.Float, nullable=False, default=0.0)
 
     buses = db.relationship('Buses', backref='company', lazy=True)

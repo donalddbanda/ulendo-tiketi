@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request, abort
 
 routes_bp = Blueprint('routes', __name__)
 
-@routes_bp.route('/routes', methods=["POST"])
+@routes_bp.route('/create', methods=["POST"])
 @admin_required
 def create_route():
     """ Create route """
@@ -21,6 +21,9 @@ def create_route():
 
     if not all([origin, destination]):
         abort(400, description='provide origin and destination')
+
+    if Routes.query.filter_by(origin=origin, destination=destination).first():
+        abort(400, description=f'{origin} - {destination} route already exists.')
     
     route = Routes(origin=origin, destination=destination, distance=distance)
 
@@ -34,7 +37,7 @@ def create_route():
     return jsonify({"message": "route created", "route": route.to_dict()}), 201
 
 
-@routes_bp.route('/routes', methods=["GET"])
+@routes_bp.route('/get', methods=["GET"])
 def get_routes():
     """ Get all routes """
 

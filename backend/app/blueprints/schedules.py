@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request, abort
 
 schedules_bp = Blueprint('schedules', __name__)
 
-@schedules_bp.route('/schedule', methods=["POST"])
+@schedules_bp.route('/create', methods=["POST"])
 @company_or_admin_required
 def schedule_bus():
     """ Create a schedule for a bus """
@@ -38,7 +38,7 @@ def schedule_bus():
     return jsonify({"message": "Schedule created", "schedule": schedule.to_dict()}), 201
 
 
-@schedules_bp.route('/schedules', methods=["GET"])
+@schedules_bp.route('/get', methods=["GET"])
 def get_schedules():
     """ Get all available schedules """
 
