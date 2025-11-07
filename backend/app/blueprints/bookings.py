@@ -1,5 +1,6 @@
 from app import db
 from app.models import Bookings
+from ..utils.payments import initiate_payment
 from flask_login import login_required, current_user
 from flask import Blueprint, request, jsonify, abort
 from .auth import passenger_required, passenger_or_admin_required
@@ -19,6 +20,9 @@ def book_a_seat():
     if not bus_id or not schedule_id:
         abort(400, description="Missing required booking information.")
 
+    if booking.schedule.available_seats <= 0:
+        abort(400, description="No available seats for this schedule.")
+
     booking = Bookings(
         schedule_id=schedule_id,
         user_id=current_user.id,
@@ -29,6 +33,7 @@ def book_a_seat():
     try:
         db.session.add(booking)
         db.session.commit()
+        return initiate_payment(amount=booking.schedule.price, trans_reference=f"BOOKING-{current_user.id}-{booking.id}")
     except:
         abort(500)
 

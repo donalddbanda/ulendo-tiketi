@@ -6,7 +6,7 @@ from .auth import admin_required, company_or_admin_required
 
 companies_bp = Blueprint('companies', __name__)
 
-@companies_bp.route('/bus-companies', methods=["POST"])
+@companies_bp.route('/register', methods=["POST"])
 @admin_required
 def register_bus_company():
     """ Register bus company """
