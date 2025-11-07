@@ -213,7 +213,7 @@ def register_shell_context(app: Flask) -> None:
         """Make database models available in flask shell."""
         from app.models import (
             Users, BusCompanies, Buses, Routes, Schedules,
-            Bookings, Payments, Payouts,
+            Bookings, Transactions, Payouts, PasswordResetCode
         )
         return {
             'db': db,
@@ -223,8 +223,9 @@ def register_shell_context(app: Flask) -> None:
             'Routes': Routes,
             'Schedules': Schedules,
             'Bookings': Bookings,
-            'Payments': Payments,
             'Payouts': Payouts,
+            'Transactions': Transactions,
+            "PasswordResetCode": PasswordResetCode
         }
 
 

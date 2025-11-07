@@ -3,7 +3,7 @@ from app import db
 from functools import wraps
 from app.models import Users, PasswordResetCode
 from flask import request, jsonify, abort, Blueprint
-from flask_login import current_user, login_required, logout_user
+from flask_login import current_user, login_required, logout_user, login_user
 from ..utils.email_services import send_password_reset_code_email
 
 
@@ -69,6 +69,8 @@ def login():
 
     if not user.verify_password(password):
         abort(400, description='Invalid login credentials')
+    
+    login_user(user)
     
     return jsonify({
         "message": "Login successful",
