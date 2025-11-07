@@ -2,12 +2,11 @@ from app import db
 from app.models import BusCompanies
 from flask import Blueprint, request, jsonify, abort
 from .auth import admin_required, company_or_admin_required
-from sqlalchemy.exc import IntegrityError
 
 
 companies_bp = Blueprint('companies', __name__)
 
-@companies_bp.route('/register', methods=["POST"])
+@companies_bp.route('/bus-companies', methods=["POST"])
 @admin_required
 def register_bus_company():
     """ Register bus company """
@@ -24,9 +23,6 @@ def register_bus_company():
     if not all([name, description, contact_info, account_details]):
         abort(400, description='name, description, conatact_info, and account_details required')
     
-    if BusCompanies.query.filter_by(name=name).first():
-        abort(400, description=f'A company named "{name}" already exists.')
-    
     bus_company = BusCompanies(
         name=name, description=description,
         contact_info=contact_info, account_details=account_details
@@ -35,14 +31,11 @@ def register_bus_company():
     try:
         db.session.add(bus_company)
         db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        abort(400, description='A company with this name or unique details already exists.')
-    except Exception as e:
-        db.session.rollback()
-        abort(500, description='An unexpected error occurred during database operation.')
+    except:
+        abort(500)
     
     return jsonify({"message": "bus company created", "company": bus_company.to_dict()})
+
 
 @companies_bp.route('/bus-companies', methods=["GET"])
 def get_companies():
