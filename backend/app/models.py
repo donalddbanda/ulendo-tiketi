@@ -53,6 +53,7 @@ class BusCompanies(db.Model):
     contact_info = db.Column(db.JSON, nullable=False)
     account_details = db.Column(db.JSON, nullable=False)
     status = db.Column(db.Boolean, default='pending', index=True)
+    balance = db.Column(db.Float, nullable=False, default=0.0)
 
     buses = db.relationship('Buses', backref='company', lazy=True)
     payouts = db.relationship('Payouts', backref='company', lazy=True)
@@ -168,6 +169,12 @@ class Bookings(db.Model):
     def create_qrcode(self, user_id, schedule_id):
         self.qrcode = f"{user_id}-{schedule_id}-{datetime.now().timestamp()}"
 
+    def update_company_balance(self, booking_status: str):
+        """
+        Update the balance of the bus company associated with 
+        this booking's schedule based on the booking.
+        """
+
     def can_cancel(self):
         """
         Check if booking can be cancelled.
@@ -200,7 +207,7 @@ class Payouts(db.Model):
     __tablename__ = 'payouts'
 
     id = db.Column(db.Integer, primary_key=True)
-    ammount = db.Column(db.Float, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='pending', index=True)
     requested_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     processed_at = db.Column(db.DateTime, nullable=True)
@@ -211,7 +218,7 @@ class Payouts(db.Model):
         return {
             'payout': {
                 "id": self.id,
-                "ammount": self.ammount,
+                "amount": self.amount,
                 "status": self.status,
                 "requested_at": self.requested_at.isoformat(),
                 "processed_at": self.processed_at.isoformat() if self.processed_at else None,
