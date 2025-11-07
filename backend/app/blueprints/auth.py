@@ -81,7 +81,6 @@ def login():
         
 
 @auth_bp.route('/logout', methods=["POST"])
-@login_required
 def logout():
     logout_user()
     return jsonify({"message": "Logout successful"})
@@ -195,7 +194,7 @@ def company_required(f):
 def passenger_or_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_anonnnymous:
+        if current_user.is_anonymous:
             abort(401)
         if current_user.role.lower() not in ['admin', 'passenger']:
             abort(403)
@@ -206,7 +205,7 @@ def passenger_or_admin_required(f):
 def company_or_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_anonnnymous:
+        if current_user.is_anonymous:
             abort(401)
         if current_user.role.lower not in ['admin', 'company']:
             abort(403)

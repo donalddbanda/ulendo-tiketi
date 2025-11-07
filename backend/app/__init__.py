@@ -65,7 +65,7 @@ def register_blueprints(app: Flask) -> None:
     
     # Register blueprints with URL prefix
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(users_bp, url_prefix='/api/users')
+    app.register_blueprint(users_bp, url_prefix='/api')
     app.register_blueprint(companies_bp, url_prefix='/api/companies')
     app.register_blueprint(buses_bp, url_prefix='/api/buses')
     app.register_blueprint(routes_bp, url_prefix='/api/routes')
