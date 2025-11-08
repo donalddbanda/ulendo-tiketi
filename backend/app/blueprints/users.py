@@ -1,23 +1,30 @@
 from app import db
 from app.models import Users
 from flask_login import current_user
-from .auth import passenger_or_admin_required
+from .auth import passenger_or_admin_required, passenger_required, admin_required
 from flask import Blueprint, request, jsonify, abort
 
 
 users_bp = Blueprint('users', __name__)
 
 @users_bp.route('/get/<int:id>', methods=["GET"])
-@passenger_or_admin_required
-def get_user(id: int):
+@admin_required
+def get_specific_user(id: int):
     """ fetch user details """
-    if current_user.role.lower() == 'admin':
-        user = Users.query.filter_by(id=id).first()
     
-    if current_user.role.lower() == 'passenger':
-        if current_user.id != id:
-            abort(403)
-        user = Users.query.filter_by(id=current_user.id).first()
+    user = Users.query.filter_by(id=id).first()
+
+    if not user:
+        abort(404)
+    return jsonify(user.to_dict())
+
+
+@users_bp.route('/me', methods=["GET"])
+@passenger_required
+def get_user():
+    """ fetch user details """
+    
+    user = Users.query.filter_by(id=current_user.id).first()
 
     if not user:
         abort(404)

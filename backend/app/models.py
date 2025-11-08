@@ -63,10 +63,10 @@ class BusCompanies(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "contact_info": self.contact_info,
-            "account_details": self.account_details,
+            # "contact_info": self.contact_info,
+            # "account_details": self.account_details,
             "status": self.status,
-            "buses": self.buses.count()
+            # "buses": self.buses
         }
     
     def can_add_bus(self):
@@ -166,9 +166,6 @@ class Bookings(db.Model):
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    def create_qrcode(self, user_id, schedule_id):
-        self.qrcode = f"{user_id}-{schedule_id}-{datetime.now().timestamp()}"
-
     def update_company_balance(self, booking_status: str):
         """
         Update the balance of the bus company associated with 
@@ -180,14 +177,21 @@ class Bookings(db.Model):
         Check if booking can be cancelled.
         Bookings can only be cancelled if departure is more than 24 hours away.
         """
-        # Get the schedule's departure time
-        if not self.schedule:
+        if not self.schedule or not self.schedule.departure_time:
             return False
-        
-        # Calculate the cancellation deadline (24 hours before departure)
-        cancellation_deadline = self.schedule.departure_time - timedelta(hours=24)
-        
-        return datetime.now(timezone.utc) < cancellation_deadline
+
+        # Ensure departure_time is timezone-aware
+        departure_time = self.schedule.departure_time
+        if departure_time.tzinfo is None:
+            departure_time = departure_time.replace(tzinfo=timezone.utc)
+
+        # Calculate cancellation deadline: 24 hours before departure
+        cancellation_deadline = departure_time - timedelta(hours=24)
+
+        # Current time in UTC, timezone-aware
+        now = datetime.now(timezone.utc)
+
+        return now < cancellation_deadline
 
 
     def to_dict(self):
@@ -227,7 +231,7 @@ class Payouts(db.Model):
         }
     
     def __repr__(self):
-        return f"<Payout {self.id} | {self.ammount}>"
+        return f"<Payout {self.id} | {self.amount}>"
     
 
 class Transactions(db.Model): 

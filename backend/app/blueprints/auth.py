@@ -101,7 +101,7 @@ def create_password_reset_code(email):
     return code.code
 
 
-@auth_bp.route('/reset-password/request', methods=["POST"])
+@auth_bp.route('/request/password-reset/', methods=["POST"])
 def request_password_reset():
     data = request.get_json()
     if not data:
@@ -126,7 +126,7 @@ def request_password_reset():
     return jsonify({"message": "Password reset code sent. Check your spam if you haven't recieved it."}), 200
 
 
-@auth_bp.route('/rest-password', methods=["POST"])
+@auth_bp.route('/reset-password', methods=["POST"])
 def reset_password():
     data = request.get_json()
     if not data:

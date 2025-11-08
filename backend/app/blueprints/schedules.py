@@ -1,7 +1,8 @@
 from app import db
 from app.models import Schedules
+from datetime import datetime, timezone
 from .auth import company_or_admin_required
-from flask import Blueprint, jsonify, request, abort
+from flask import Blueprint, jsonify, request, abort, current_app
 
 
 schedules_bp = Blueprint('schedules', __name__)
@@ -22,8 +23,23 @@ def schedule_bus():
     available_seats = data.get('available_seats')
     bus_id = data.get('bus_id')
 
+
+
     if not all([departure_time, arrival_time, price, available_seats, bus_id, route_id]):
         abort(400, description='required data is missing')
+
+    try:
+        departure_time = datetime.strptime(departure_time, '%Y,%m,%d,%H,%M,%S')
+        arrival_time = datetime.strptime(arrival_time, '%Y,%m,%d,%H,%M,%S')
+    except ValueError:
+        return jsonify({"message": f"date and time must be YYYY,MM,DD,HH,MM,SS"}), 400
+
+    departure_time = departure_time.replace(tzinfo=timezone.utc)
+    arrival_time = arrival_time.replace(tzinfo=timezone.utc)
+
+    schedule = Schedules(
+        departure_time=departure_time, arrival_time=arrival_time, price=price,
+    )
     
     schedule = Schedules(
         departure_time=departure_time, arrival_time=arrival_time, price=price,
@@ -32,8 +48,10 @@ def schedule_bus():
     try:
         db.session.add(schedule)
         db.session.commit()
-    except:
-        abort(500)
+    except Exception as e:
+        # abort(500)
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
     return jsonify({"message": "Schedule created", "schedule": schedule.to_dict()}), 201
 

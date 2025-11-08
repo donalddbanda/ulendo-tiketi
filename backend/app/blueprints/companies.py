@@ -80,6 +80,9 @@ def approve_company_registration(id: int, action: str):
     company = BusCompanies.query.filter_by(id=id).first()
     if not company:
         abort(400, description='bus company not found')
+
+    if company.status == 'registered':
+        abort(400, description='Bus company already registered')
     
     company.status = "registered" if action.lower().strip() == 'approve' else 'rejected'
     try:
@@ -89,10 +92,10 @@ def approve_company_registration(id: int, action: str):
 
     # TODO: send rejection or approveal email to the bus company
 
-    return jsonify({"message": f"{action}ed {company.id} registration"})
+    return jsonify({"message": f"{action}ed bus registration registration"})
 
 
-@companies_bp.route('/get/<int:id>', methods=["PUT", "POST"])
+@companies_bp.route('/update/<int:id>', methods=["PUT", "POST"])
 @company_or_admin_required
 def update_company_info(id: int):
     """ update company details """
@@ -112,6 +115,9 @@ def update_company_info(id: int):
     description = data.get('description', company.description)
     account_details = data.get('account_details', company.account_details)
     contact_info = data.get('contact_info', company.contact_info)
+
+    if BusCompanies.query.filter(BusCompanies.name==name, BusCompanies.id!=company.id).first():
+        abort(400, description='Another company with this name already exists.')
 
     company.name, company.description, company.account_details, company.contact_info = name, description, account_details, contact_info
 

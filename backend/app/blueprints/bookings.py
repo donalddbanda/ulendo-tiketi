@@ -1,5 +1,5 @@
 from app import db
-from app.models import Bookings
+from app.models import Bookings, Schedules
 from datetime import datetime, timezone
 from ..utils.payments import initiate_payment
 from flask_login import login_required, current_user
@@ -9,37 +9,44 @@ from .auth import passenger_required, passenger_or_admin_required
 
 bookings_bp = Blueprint('bookings', __name__)
 
-@bookings_bp.route('/create', methods=["POST"])
+@bookings_bp.route('/book', methods=["POST"])
 @passenger_required
 def book_a_seat():
     """ book a seat """
     data = request.get_json()
 
-    bus_id = data.get('bus_id')
     schedule_id = data.get('schedule_id')
 
-    if not bus_id or not schedule_id:
+    if not schedule_id:
         abort(400, description="Missing required booking information.")
+    
+    schedule = Schedules.query.filter_by(id=schedule_id).first()
+    if not schedule:
+        abort(400, description='invalid schedule_id')
+
+
+    qrcode = f"{current_user.id}-{schedule_id}-{datetime.now().timestamp()}"
 
     booking = Bookings(
         schedule_id=schedule_id,
         user_id=current_user.id,
-        bus_id=bus_id
+        qrcode=qrcode
     )
 
-    if booking.schedule.available_seats <= 0:
+    if schedule.available_seats <= 0:
         abort(400, description="No available seats for this schedule.")
     
-    booking.schrdule.available_seats -= 1
+    schedule.available_seats -= 1
 
-    booking.qrcode = booking.create_qrcode(booking.user_id, booking.schedule_id)
 
     try:
         db.session.add(booking)
         db.session.commit()
         # return initiate_payment(amount=booking.schedule.price, trans_reference=f"BOOKING-{current_user.id}-{booking.id}")
-    except:
-        abort(500)
+    except Exception as e:
+        # abort(500)
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
     return jsonify(booking.to_dict()), 201
 
