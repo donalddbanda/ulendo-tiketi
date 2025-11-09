@@ -1,7 +1,7 @@
 from app import db
-from app.models import Bookings, Schedules
 from datetime import datetime, timezone
 from ..utils.payments import create_payment_link
+from app.models import Bookings, Schedules, Users
 from flask_login import login_required, current_user
 from flask import Blueprint, request, jsonify, abort
 from .auth import passenger_required, passenger_or_admin_required
@@ -51,8 +51,8 @@ def book_a_seat():
         )
         
         if payment_result.get('status') == 'success':
-            booking.payment_link = payment_result['data']['checkout_url']
-            booking.tx_ref = payment_result['data']['data']['tx_ref']
+            booking.payment_link = payment_result['checkout_url']
+            booking.tx_ref = payment_result['tx_ref']
             db.session.commit()
             
             return jsonify({
@@ -115,6 +115,9 @@ def get_bookings():
         
         if not user_id or not data:
             abort(404, description='data or user_id is missing')
+        
+        if not Users.query.filter_by(id=user_id).first():
+            abort(404, description='user not found')
         
         bookings = Bookings.query.filter_by(user_id=user_id).all()
     else:

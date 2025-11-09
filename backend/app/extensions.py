@@ -16,6 +16,6 @@ db = SQLAlchemy()
 login = LoginManager()
 login.login_view = 'auth.login'
 migrate = Migrate()
-paychangu_client = PayChanguClient(secret_key="SEC-TEST-nmUg5rl6Q9b4VPILQ1bXAxuiYpKitSBa")
+paychangu_client = PayChanguClient(secret_key=os.getenv('PAYCHANGU_API_KEY'))
 
 

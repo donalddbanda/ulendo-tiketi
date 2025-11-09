@@ -24,7 +24,7 @@ def create_payment_link(booking_id: int, amount: float, user_email: str = None, 
     # Get callback and return URLs from config
     base_url = current_app.config.get('PAYCHANGU_CALLBACK_URL', 'http://localhost:5000')
     callback_url = current_app.config.get('PAYCHANGU_CALLBACK_URL', f"{base_url}/api/payments/successful")
-    return_url = "127.0.0.1:500/api/bookings/get"
+    return_url = "localhost:5000/api/bookings/get"
     
     # Create payment object
     payment = Payment(
@@ -33,9 +33,9 @@ def create_payment_link(booking_id: int, amount: float, user_email: str = None, 
         tx_ref=tx_ref,
         email=user_email,
         first_name=user_name,
-        last_name=None,
-        callback_url=callback_url,
-        return_url=return_url,
+        last_name="N/A",
+        callback_url="http://127.0.0.1:5000/payments/callback",
+        return_url="https://example.com/return",
         customization={
             "title": "Bus Ticket Payment",
             "description": f"Payment for booking #{booking_id}"
@@ -79,8 +79,6 @@ def verify_payment(tx_ref: str):
         dict: Payment verification details
     """
     try:
-        # You'll need to implement this based on PayChangu's verification endpoint
-        # This is a placeholder for the verification logic
         response = paychangu_client.verify_transaction(tx_ref)
         return response
     except Exception as e:
