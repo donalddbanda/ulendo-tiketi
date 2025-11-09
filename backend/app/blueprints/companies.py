@@ -92,7 +92,7 @@ def approve_company_registration(id: int, action: str):
 
     # TODO: send rejection or approveal email to the bus company
 
-    return jsonify({"message": f"{action}ed bus registration registration"})
+    return jsonify({"message": f"{action}ed bus company registration"})
 
 
 @companies_bp.route('/update/<int:id>', methods=["PUT", "POST"])

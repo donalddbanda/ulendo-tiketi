@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask_mail import Mail
 from flask_cors import CORS
 from flask_migrate import Migrate
@@ -7,12 +8,14 @@ from paychangu import PayChanguClient
 from flask_sqlalchemy import SQLAlchemy
 
 
+load_dotenv()
+
 mail = Mail()
 cors = CORS()
 db = SQLAlchemy()
 login = LoginManager()
 login.login_view = 'auth.login'
 migrate = Migrate()
-paychangu_client = PayChanguClient(secret_key=os.getenv('PAYCHANGU_API_KEY'))
+paychangu_client = PayChanguClient(secret_key="SEC-TEST-nmUg5rl6Q9b4VPILQ1bXAxuiYpKitSBa")
 
 

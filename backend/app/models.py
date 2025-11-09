@@ -157,6 +157,7 @@ class Bookings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
     qrcode = db.Column(db.String(100), nullable=False, unique=True)
+    payment_link = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
@@ -171,6 +172,12 @@ class Bookings(db.Model):
         Update the balance of the bus company associated with 
         this booking's schedule based on the booking.
         """
+
+    def create_tx_ref(self):
+        """ Create a unique transaction reference for a booking """
+
+        current_time_ms = int(datetime.now().timestamp() * 1000)
+        return f"BOOKING-{self.id}-{current_time_ms}"
 
     def can_cancel(self):
         """

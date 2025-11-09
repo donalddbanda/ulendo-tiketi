@@ -1,9 +1,10 @@
 from app import db
 from app.models import Bookings, Schedules
 from datetime import datetime, timezone
-from ..utils.payments import initiate_payment
+from ..utils.payments import create_payment_link
 from flask_login import login_required, current_user
 from flask import Blueprint, request, jsonify, abort
+from ..utils.payments import create_payment_link
 from .auth import passenger_required, passenger_or_admin_required
 
 
@@ -37,12 +38,11 @@ def book_a_seat():
         abort(400, description="No available seats for this schedule.")
     
     schedule.available_seats -= 1
-
+    booking.payment_link = create_payment_link(amount=schedule.price)
 
     try:
         db.session.add(booking)
         db.session.commit()
-        # return initiate_payment(amount=booking.schedule.price, trans_reference=f"BOOKING-{current_user.id}-{booking.id}")
     except Exception as e:
         # abort(500)
         db.session.rollback()
@@ -67,6 +67,7 @@ def cancel_booking(booking_id: int):
         return abort(400, description='cancellation window has passed')
 
     booking.status = 'cancelled'
+    booking.schedule.available_seats -= 1
     booking.cancelled_at = datetime.now(timezone.utc)
 
     try:
@@ -92,6 +93,9 @@ def get_bookings():
         bookings = Bookings.query.filter_by(user_id=user_id).all()
     else:
         bookings = Bookings.query.filter_by(user_id=current_user.id).all()
+    
+    if bookings == []:
+        return jsonify({"message": "No bookings found", "bookings": []}), 200
 
     return jsonify({"bookings": [booking.to_dict() for booking in bookings]}), 200
 

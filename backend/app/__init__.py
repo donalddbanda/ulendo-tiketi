@@ -60,7 +60,7 @@ def register_blueprints(app: Flask) -> None:
     from app.blueprints.schedules import schedules_bp
     from app.blueprints.bookings import bookings_bp
     # from app.blueprints.search import search_bp
-    # from app.blueprints.payments import payments_bp
+    from app.blueprints.payments import payments_bp
     from app.blueprints.payouts import payouts_bp
     
     # Register blueprints with URL prefix
@@ -72,11 +72,12 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(schedules_bp, url_prefix='/api/schedules')
     app.register_blueprint(bookings_bp, url_prefix='/api/bookings')
     # app.register_blueprint(search_bp, url_prefix='/api/search')
-    # app.register_blueprint(payments_bp, url_prefix='/api/payments')
+    app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(payouts_bp, url_prefix='/api/payouts')
     
     # Register root endpoint
     @app.route('/')
+    @app.route('/api')
     def index():
         """API root endpoint."""
         return jsonify({
