@@ -1,8 +1,8 @@
-"""Initial migration
+"""initial migration
 
-Revision ID: e5a6bffed659
+Revision ID: 769a273b9ddd
 Revises: 
-Create Date: 2025-11-08 12:20:00.267603
+Create Date: 2025-11-09 15:37:15.542925
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e5a6bffed659'
+revision = '769a273b9ddd'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -96,6 +96,8 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=100), nullable=False),
     sa.Column('qrcode', sa.String(length=100), nullable=False),
+    sa.Column('payment_link', sa.String(length=200), nullable=True),
+    sa.Column('tx_ref', sa.String(length=100), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('cancelled_at', sa.DateTime(), nullable=True),
     sa.Column('schedule_id', sa.Integer(), nullable=False),
@@ -103,7 +105,8 @@ def upgrade():
     sa.ForeignKeyConstraint(['schedule_id'], ['schedules.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('qrcode')
+    sa.UniqueConstraint('qrcode'),
+    sa.UniqueConstraint('tx_ref')
     )
     with op.batch_alter_table('bookings', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_bookings_status'), ['status'], unique=False)
@@ -116,9 +119,11 @@ def upgrade():
     sa.Column('reference', sa.String(length=100), nullable=False),
     sa.Column('payment_status', sa.String(length=50), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('completed_at', sa.DateTime(), nullable=True),
     sa.Column('booking_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['booking_id'], ['bookings.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('reference')
     )
     with op.batch_alter_table('transactions', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_transactions_status'), ['status'], unique=False)
