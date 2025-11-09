@@ -51,8 +51,8 @@ def book_a_seat():
         )
         
         if payment_result.get('status') == 'success':
-            booking.payment_link = payment_result['checkout_url']
-            booking.tx_ref = payment_result['tx_ref']
+            booking.payment_link = payment_result['data']['checkout_url']
+            booking.tx_ref = payment_result['data']['data']['tx_ref']
             db.session.commit()
             
             return jsonify({

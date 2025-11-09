@@ -24,7 +24,7 @@ def create_payment_link(booking_id: int, amount: float, user_email: str = None, 
     # Get callback and return URLs from config
     base_url = current_app.config.get('PAYCHANGU_CALLBACK_URL', 'http://localhost:5000')
     callback_url = current_app.config.get('PAYCHANGU_CALLBACK_URL', f"{base_url}/api/payments/successful")
-    return_url = "127.0.0.1:500/api/payments/failed"
+    return_url = "127.0.0.1:500/api/bookings/get"
     
     # Create payment object
     payment = Payment(
