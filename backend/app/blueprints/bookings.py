@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from ..utils.payments import create_payment_link
 from flask_login import login_required, current_user
 from flask import Blueprint, request, jsonify, abort
-from ..utils.payments import create_payment_link
 from .auth import passenger_required, passenger_or_admin_required
 
 
@@ -25,30 +24,57 @@ def book_a_seat():
     if not schedule:
         abort(400, description='invalid schedule_id')
 
+    if schedule.available_seats <= 0:
+        abort(400, description="No available seats for this schedule.")
 
-    qrcode = f"{current_user.id}-{schedule_id}-{datetime.now().timestamp()}"
-
+    # Create booking with pending status
     booking = Bookings(
         schedule_id=schedule_id,
         user_id=current_user.id,
-        qrcode=qrcode
+        qrcode=f"{current_user.id}-{schedule_id}-{datetime.now().timestamp()}",
+        status='pending'
     )
-
-    if schedule.available_seats <= 0:
-        abort(400, description="No available seats for this schedule.")
     
+    # Reserve seat temporarily
     schedule.available_seats -= 1
-    booking.payment_link = create_payment_link(amount=schedule.price)
 
     try:
         db.session.add(booking)
         db.session.commit()
+        
+        # Create payment link after booking is saved
+        payment_result = create_payment_link(
+            booking_id=booking.id,
+            amount=schedule.price,
+            user_email=current_user.email,
+            user_name=current_user.name
+        )
+        
+        if payment_result.get('status') == 'success':
+            booking.payment_link = payment_result['checkout_url']
+            booking.tx_ref = payment_result['tx_ref']
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Booking created successfully",
+                "booking": booking.to_dict(),
+                "payment_link": booking.payment_link,
+                "tx_ref": booking.tx_ref
+            }), 201
+        else:
+            # Rollback booking if payment link creation fails
+            schedule.available_seats += 1
+            db.session.delete(booking)
+            db.session.commit()
+            
+            return jsonify({
+                "error": "Failed to create payment link",
+                "details": payment_result.get('error')
+            }), 500
+            
     except Exception as e:
-        # abort(500)
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
-    return jsonify(booking.to_dict()), 201
 
 
 @bookings_bp.route('/cancel/<int:booking_id>', methods=["POST"])
@@ -67,7 +93,7 @@ def cancel_booking(booking_id: int):
         return abort(400, description='cancellation window has passed')
 
     booking.status = 'cancelled'
-    booking.schedule.available_seats -= 1
+    booking.schedule.available_seats += 1
     booking.cancelled_at = datetime.now(timezone.utc)
 
     try:
@@ -113,5 +139,3 @@ def get_booking(booking_id: int):
         abort(403)
 
     return jsonify(booking.to_dict()), 200
-
-
