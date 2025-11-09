@@ -63,10 +63,7 @@ class BusCompanies(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            # "contact_info": self.contact_info,
-            # "account_details": self.account_details,
             "status": self.status,
-            # "buses": self.buses
         }
     
     def can_add_bus(self):
@@ -158,6 +155,7 @@ class Bookings(db.Model):
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
     qrcode = db.Column(db.String(100), nullable=False, unique=True)
     payment_link = db.Column(db.String(200), nullable=True)
+    tx_ref = db.Column(db.String(100), nullable=True, unique=True)  # Transaction reference from PayChangu
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     cancelled_at = db.Column(db.DateTime, nullable=True)
 
@@ -167,24 +165,17 @@ class Bookings(db.Model):
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    def update_company_balance(self, booking_status: str):
-        """
-        Update the balance of the bus company associated with 
-        this booking's schedule based on the booking.
-        """
-
-    def create_tx_ref(self):
-        """ Create a unique transaction reference for a booking """
-
-        current_time_ms = int(datetime.now().timestamp() * 1000)
-        return f"BOOKING-{self.id}-{current_time_ms}"
-
     def can_cancel(self):
         """
         Check if booking can be cancelled.
-        Bookings can only be cancelled if departure is more than 24 hours away.
+        Bookings can only be cancelled if departure is more than 24 hours away
+        and payment is confirmed.
         """
         if not self.schedule or not self.schedule.departure_time:
+            return False
+        
+        # Can't cancel if not confirmed
+        if self.status != 'confirmed':
             return False
 
         # Ensure departure_time is timezone-aware
@@ -206,8 +197,12 @@ class Bookings(db.Model):
             "id": self.id,
             "status": self.status,
             "qrcode": self.qrcode,
+            "payment_link": self.payment_link,
+            "tx_ref": self.tx_ref,
             "schedule_id": self.schedule_id,
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None
         }
 
     def __repr__(self):
@@ -247,24 +242,24 @@ class Transactions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='pending', index=True)
-    method = db.Column(db.String(50), nullable=False)
-    reference = db.Column(db.String(100), nullable=False)
-    payment_status = db.Column(db.String(50), nullable=False)
+    method = db.Column(db.String(50), nullable=False, default='paychangu')
+    reference = db.Column(db.String(100), nullable=False, unique=True)  # tx_ref from PayChangu
+    payment_status = db.Column(db.String(50), nullable=False, default='pending')
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime, nullable=True)
     booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
 
     def to_dict(self):
         return {
-            'transaction': {
-                "id": self.id,
-                "amount": self.amount,
-                "status": self.status,
-                "method": self.method,
-                "reference": self.reference,
-                "payment_status": self.payment_status,
-                "created_at": self.created_at,
-                "booking_id": self.booking_id
-            }
+            "id": self.id,
+            "amount": self.amount,
+            "status": self.status,
+            "method": self.method,
+            "reference": self.reference,
+            "payment_status": self.payment_status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "booking_id": self.booking_id
         }
 
     def __repr__(self):
@@ -284,7 +279,7 @@ class PasswordResetCode(db.Model):
         self.code = random.randrange(100000, 999999)
     
     def is_code_valid(self):
-        return self.created_at < self.expires_at
+        return datetime.now(timezone.utc) < self.expires_at
     
     def __repr__(self):
         return f"<PasswordResetToken {self.id} | {self.email}>"
