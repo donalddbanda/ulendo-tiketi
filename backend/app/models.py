@@ -153,60 +153,89 @@ class Bookings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
-    qrcode = db.Column(db.String(100), nullable=False, unique=True)
+    
+    qr_code_reference = db.Column(db.String(100), nullable=True, unique=True, index=True)
+    qr_code_reference_status = db.Column(db.String(20), nullable=False, default='unused', index=True)
+    # Status values: 'unused', 'used', 'expired'
+    
     payment_link = db.Column(db.String(200), nullable=True)
-    tx_ref = db.Column(db.String(100), nullable=True, unique=True)  # Transaction reference from PayChangu
+    tx_ref = db.Column(db.String(100), nullable=True, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     cancelled_at = db.Column(db.DateTime, nullable=True)
+    boarded_at = db.Column(db.DateTime, nullable=True)  # Track when passenger boarded
 
     # Relationships
     transactions = db.relationship('Transactions', backref='booking', lazy=True)
-
     schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
+    def generate_qr_reference(self):
+        """Generate unique QR code reference"""
+        import secrets
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        random_part = secrets.token_hex(8)
+        self.qr_code_reference = f"UTK-{self.id}-{timestamp}-{random_part}"
+        return self.qr_code_reference
+
     def can_cancel(self):
-        """
-        Check if booking can be cancelled.
-        Bookings can only be cancelled if departure is more than 24 hours away
-        and payment is confirmed.
-        """
+        """Check if booking can be cancelled"""
         if not self.schedule or not self.schedule.departure_time:
             return False
         
-        # Can't cancel if not confirmed
         if self.status != 'confirmed':
             return False
 
-        # Ensure departure_time is timezone-aware
         departure_time = self.schedule.departure_time
         if departure_time.tzinfo is None:
             departure_time = departure_time.replace(tzinfo=timezone.utc)
 
-        # Calculate cancellation deadline: 24 hours before departure
         cancellation_deadline = departure_time - timedelta(hours=24)
-
-        # Current time in UTC, timezone-aware
         now = datetime.now(timezone.utc)
 
         return now < cancellation_deadline
 
+    def is_qr_valid(self):
+        """Check if QR code is still valid for boarding"""
+        if self.status != 'confirmed':
+            return False, f"Booking status is {self.status}"
+        
+        if self.qr_code_reference_status == 'used':
+            return False, "QR code already used"
+        
+        if self.qr_code_reference_status == 'expired':
+            return False, "QR code expired"
+        
+        # Check if departure time has passed
+        departure_time = self.schedule.departure_time
+        if departure_time.tzinfo is None:
+            departure_time = departure_time.replace(tzinfo=timezone.utc)
+        
+        # Allow boarding up to 30 minutes after departure
+        boarding_deadline = departure_time + timedelta(minutes=30)
+        now = datetime.now(timezone.utc)
+        
+        if now > boarding_deadline:
+            return False, "Boarding time has passed"
+        
+        return True, "Valid"
 
     def to_dict(self):
         return {
             "id": self.id,
             "status": self.status,
-            "qrcode": self.qrcode,
+            "qr_code_reference": self.qr_code_reference,
+            "qr_code_status": self.qr_code_reference_status,
             "payment_link": self.payment_link,
             "tx_ref": self.tx_ref,
             "schedule_id": self.schedule_id,
             "user_id": self.user_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None
+            "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
+            "boarded_at": self.boarded_at.isoformat() if self.boarded_at else None
         }
 
     def __repr__(self):
-        return f"<Booking {self.id} | {self.qrcode}>"
+        return f"<Booking {self.id} | {self.qr_code_reference}>"
     
 
 class Payouts(db.Model):

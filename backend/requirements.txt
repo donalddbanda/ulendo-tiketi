@@ -7,3 +7,6 @@ flask-sqlalchemy
 python-dotenv
 paychangu
 pyjwt
+redis
+qrcode[pil]
+pillow
