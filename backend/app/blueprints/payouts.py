@@ -1,9 +1,10 @@
 from app import db
+from flask_login import current_user
 from datetime import datetime, timezone
 from app.models import Payouts, BusCompanies
 from .auth import company_or_admin_required, admin_required
 from flask import request, jsonify, abort, Blueprint, current_app
-from flask_login import current_user
+from ..utils.paychangu_payouts import initiate_bank_payout, initiate_mobile_money_payout
 
 
 payouts_bp = Blueprint('payouts', __name__)
@@ -153,30 +154,55 @@ def process_payout(payout_id: int):
                 'available': company.balance
             }), 400
         
-        # Deduct from company balance
-        company.balance -= payout.amount
-        payout.status = 'completed'
-        payout.processed_at = datetime.now(timezone.utc)
+        # Get company bank details
+        account_details = company.account_details
+        if not account_details or not account_details.get('bank_uuid'):
+            return jsonify({'error': 'Company bank account not configured'}), 400
         
-        message = 'Payout approved and processed'
-    else:
-        payout.status = 'rejected'
-        payout.processed_at = datetime.now(timezone.utc)
-        message = 'Payout request rejected'
-    
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-    
-    # TODO: Send email notification to company
-    
-    return jsonify({
-        'message': message,
-        'payout': payout.to_dict(),
-        'company_balance': company.balance
-    }), 200
+        # Generate unique charge_id
+        charge_id = f"PAYOUT-{payout_id}-{int(datetime.now(timezone.utc).timestamp())}"
+        
+        # Initiate payout via PayChangu
+        account_type = account_details.get('account_type', 'bank')
+        
+        if account_type == 'mobile_money':
+            result = initiate_mobile_money_payout(
+                amount=payout.amount,
+                mobile_number=account_details['account_number'],
+                bank_uuid=account_details['bank_uuid'],
+                charge_id=charge_id,
+                account_name=account_details.get('account_name')
+            )
+
+        else:
+            result = initiate_bank_payout(
+                amount=payout.amount,
+                bank_uuid=account_details['bank_uuid'],
+                account_name=account_details['account_name'],
+                account_number=account_details['account_number'],
+                charge_id=charge_id
+            )
+        
+        if result.get('status') == 'success':
+            payout.paychangu_charge_id = charge_id
+            payout.paychangu_ref_id = result.get('data', {}).get('ref_id')
+            payout.status = 'processing'
+            payout.paychangu_status = 'pending'
+            company.balance -= payout.amount # Deduct amount 
+            db.session.commit()
+
+            # TODO: Send email notification to company
+
+            return jsonify({
+                'message': 'Payout initiated successfully',
+                'payout': payout.to_dict()
+            }), 200
+        
+        else:
+            return jsonify({
+                'error': 'Failed to initiate payout',
+                'details': result.get('message')
+            }), 500
 
 
 @payouts_bp.route('/cancel/<int:payout_id>', methods=['POST', 'DELETE'])
@@ -254,4 +280,31 @@ def get_balance():
         'total_paid_out': total_paid,
         'available_for_payout': company.balance - total_requested
     }), 200
+
+
+@payouts_bp.route('/webhook', methods=['POST'])
+def payout_webhook():
+    """Handle PayChangu payout status webhooks"""
+    data = request.get_json()
+    
+    ref_id = data.get('ref_id')
+    status = data.get('status')  # 'successful', 'failed', 'cancelled'
+    
+    payout = Payouts.query.filter_by(paychangu_ref_id=ref_id).first()
+    if not payout:
+        abort(404, description='Payout not found')
+    
+    payout.paychangu_status = status
+    
+    if status == 'successful':
+        payout.status = 'completed'
+        payout.processed_at = datetime.now(timezone.utc)
+    elif status in ['failed', 'cancelled']:
+        payout.status = status
+        payout.processed_at = datetime.now(timezone.utc)
+        # Refund company balance
+        payout.company.balance += payout.amount
+    
+    db.session.commit()
+    return jsonify({'message': 'Webhook processed'}), 200
 

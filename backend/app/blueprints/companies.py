@@ -3,6 +3,7 @@ from app.models import BusCompanies
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, request, jsonify, abort
+from ..utils.paychangu_payouts import get_available_banks
 from .auth import admin_required, company_or_admin_required
 
 
@@ -20,13 +21,52 @@ def register_bus_company():
     name = data.get('name')
     description = data.get('description')
     contact_info = data.get('contact_info')
-    account_details = data.get('account_details')
 
-    if not all([name, description, contact_info, account_details]):
-        abort(400, description='name, description, conatact_info, and account_details required')
+    # Contact details
+    phonne_numbers = data.get('phone_numbers')
+    email = data.get('email')
+
+    # Bank account deatails for payouts
+    bank_name = data.get('bank_name')
+    bank_account_number = data.get('bank_account_number')
+    bank_account_name = data.get('bank_account_name')
+
+    if not all([name, description]):
+        abort(400, description='name and description are required')
     
     if BusCompanies.query.filter_by(name=name).first():
         abort(400, description=f'A company named "{name}" already exists.')
+
+    if all([bank_name, bank_account_number, bank_account_name]):
+        abort(400, description='bank_name, bank_account_number, and bank_account_name are required in account_details')
+    
+    if not all([phonne_numbers, email]):
+        abort(400, description='phone_numbers and email are required in contact_info')
+
+    contact_info = {
+        'phone_numbers': phonne_numbers,
+        'email': email
+    }
+
+    account_details = {
+        "bank_uuid": None,
+        'bank_name': bank_name,
+        "account_type": 'bank',
+        'bank_account_number': bank_account_number,
+        'bank_account_name': bank_account_name
+    }
+
+    # Get PayChangu suppported banks
+    supported_banks = get_available_banks(currency='MWK')
+
+    if supported_banks.get('status') != 'success':
+        abort(500, description='Could not verify bank details at this time. Please try again later.')
+    
+    # set bank uuid and bank name to Paychangu's suported bank name if bank is supported
+    for supported_bank in supported_banks.get('data', []):
+        if supported_bank['name'].lower().startswith(bank_name[7].lower()):
+            account_details['bank_uuid'] = supported_bank['uuid']
+            bank_name = supported_bank['name']
     
     bus_company = BusCompanies(
         name=name, description=description,
