@@ -244,8 +244,16 @@ class Payouts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='pending', index=True)
+    # Status values: 'pending', 'processing', 'completed', 'failed', 'cancelled', 'rejected'
+    
     requested_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     processed_at = db.Column(db.DateTime, nullable=True)
+    
+    # PayChangu integration fields
+    paychangu_charge_id = db.Column(db.String(100), nullable=True, unique=True)
+    paychangu_ref_id = db.Column(db.String(100), nullable=True, unique=True, index=True)
+    paychangu_status = db.Column(db.String(50), nullable=True)
+    # PayChangu status values: 'pending', 'successful', 'failed', 'cancelled'
 
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False)
 
@@ -257,12 +265,14 @@ class Payouts(db.Model):
                 "status": self.status,
                 "requested_at": self.requested_at.isoformat(),
                 "processed_at": self.processed_at.isoformat() if self.processed_at else None,
-                "company_id": self.company_id
+                "company_id": self.company_id,
+                "paychangu_ref_id": self.paychangu_ref_id,
+                "paychangu_status": self.paychangu_status
             }
         }
     
     def __repr__(self):
-        return f"<Payout {self.id} | {self.amount}>"
+        return f"<Payout {self.id} | {self.amount} | {self.status}>"
     
 
 class Transactions(db.Model): 
