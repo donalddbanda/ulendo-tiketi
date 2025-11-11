@@ -147,7 +147,7 @@ def search_companies():
     """
     name = request.args.get('name', '').strip()
     
-    query = BusCompanies.query
+    query = BusCompanies.query.filter_by(status='registered')
     
     if name:
         query = query.filter(BusCompanies.name.ilike(f'%{name}%'))
