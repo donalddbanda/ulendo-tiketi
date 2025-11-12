@@ -1,8 +1,8 @@
-"""initial migration
+"""Initial migration
 
-Revision ID: 769a273b9ddd
+Revision ID: f4c33f3bdc77
 Revises: 
-Create Date: 2025-11-09 15:37:15.542925
+Create Date: 2025-11-12 12:10:47.771073
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '769a273b9ddd'
+revision = 'f4c33f3bdc77'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -54,7 +54,7 @@ def upgrade():
     sa.Column('role', sa.String(length=100), nullable=False),
     sa.Column('phone_number', sa.String(length=20), nullable=False),
     sa.Column('email', sa.String(length=120), nullable=True),
-    sa.Column('password_hash', sa.String(length=128), nullable=False),
+    sa.Column('password_hash', sa.Text(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('phone_number')
@@ -73,11 +73,16 @@ def upgrade():
     sa.Column('status', sa.String(length=50), nullable=False),
     sa.Column('requested_at', sa.DateTime(), nullable=False),
     sa.Column('processed_at', sa.DateTime(), nullable=True),
+    sa.Column('paychangu_charge_id', sa.String(length=100), nullable=True),
+    sa.Column('paychangu_ref_id', sa.String(length=100), nullable=True),
+    sa.Column('paychangu_status', sa.String(length=50), nullable=True),
     sa.Column('company_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['company_id'], ['bus_companies.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('paychangu_charge_id')
     )
     with op.batch_alter_table('payouts', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_payouts_paychangu_ref_id'), ['paychangu_ref_id'], unique=True)
         batch_op.create_index(batch_op.f('ix_payouts_status'), ['status'], unique=False)
 
     op.create_table('schedules',
@@ -95,20 +100,23 @@ def upgrade():
     op.create_table('bookings',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=100), nullable=False),
-    sa.Column('qrcode', sa.String(length=100), nullable=False),
+    sa.Column('qr_code_reference', sa.String(length=100), nullable=True),
+    sa.Column('qr_code_reference_status', sa.String(length=20), nullable=False),
     sa.Column('payment_link', sa.String(length=200), nullable=True),
     sa.Column('tx_ref', sa.String(length=100), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('cancelled_at', sa.DateTime(), nullable=True),
+    sa.Column('boarded_at', sa.DateTime(), nullable=True),
     sa.Column('schedule_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['schedule_id'], ['schedules.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('qrcode'),
     sa.UniqueConstraint('tx_ref')
     )
     with op.batch_alter_table('bookings', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_bookings_qr_code_reference'), ['qr_code_reference'], unique=True)
+        batch_op.create_index(batch_op.f('ix_bookings_qr_code_reference_status'), ['qr_code_reference_status'], unique=False)
         batch_op.create_index(batch_op.f('ix_bookings_status'), ['status'], unique=False)
 
     op.create_table('transactions',
@@ -139,11 +147,14 @@ def downgrade():
     op.drop_table('transactions')
     with op.batch_alter_table('bookings', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_bookings_status'))
+        batch_op.drop_index(batch_op.f('ix_bookings_qr_code_reference_status'))
+        batch_op.drop_index(batch_op.f('ix_bookings_qr_code_reference'))
 
     op.drop_table('bookings')
     op.drop_table('schedules')
     with op.batch_alter_table('payouts', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_payouts_status'))
+        batch_op.drop_index(batch_op.f('ix_payouts_paychangu_ref_id'))
 
     op.drop_table('payouts')
     op.drop_table('buses')
