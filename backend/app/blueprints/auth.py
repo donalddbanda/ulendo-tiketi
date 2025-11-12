@@ -5,6 +5,7 @@ from app.models import Users, PasswordResetCode
 from flask import request, jsonify, abort, Blueprint
 from flask_login import current_user, login_required, logout_user, login_user
 from ..utils.email_services import send_password_reset_code_email
+from sqlalchemy.exc import IntegrityError
 
 
 auth_bp = Blueprint('auth', __name__)
@@ -19,14 +20,20 @@ def register():
     if not data:
         abort(400, description='data not provided')
     
-    name = data.get('name')
+    name = data.get('full_name') or data.get('name')
     email = data.get('email')
     role = data.get('role', 'passenger')
     password = data.get('password')
-    phone_number = data.get('phone_number')
+    phone_number = data.get('phone') or data.get('phone_number')
 
     if not all([name, phone_number, password]):
         abort(400, description='name, phone number, and password are required')
+
+    # Check uniqueness of email/phone early to give friendly errors
+    if email and Users.query.filter_by(email=email).first():
+        abort(400, description='An account with that email already exists')
+    if Users.query.filter_by(phone_number=phone_number).first():
+        abort(400, description='An account with that phone number already exists')
     
     user = Users(name=name, email=email, phone_number=phone_number, role=role)
     user.set_password(password)
@@ -34,16 +41,24 @@ def register():
     try:
         db.session.add(user)
         db.session.commit()
+    except IntegrityError as e:
+        # Likely a unique constraint violation; rollback and return 400
+        db.session.rollback()
+        # Log for server-side debugging
+        print('IntegrityError on user registration:', e)
+        abort(400, description='Account already exists or invalid data')
     except Exception as e:
-        abort(500, description=str(e))
+        db.session.rollback()
+        print('Error on user registration:', e)
+        abort(500, description='An unexpected error occurred')
     
     return jsonify({
         "message": "account registered",
         "user":{ 
             "id": user.id,
-            "name": user.name,
+            "full_name": user.name,
             "email": user.email,
-            "phone_number": user.phone_number,
+            "phone": user.phone_number,
             "role": user.role
         }
     })
@@ -86,6 +101,25 @@ def login():
 def logout():
     logout_user()
     return jsonify({"message": "Logout successful"})
+
+
+@auth_bp.route('/whoami', methods=["GET"])
+def whoami():
+    """Return information about the currently authenticated user."""
+    if current_user.is_anonymous:
+        return jsonify({'user': None}), 200
+
+    user = Users.query.get(current_user.get_id())
+    if not user:
+        return jsonify({'user': None}), 200
+
+    return jsonify({'user': {
+        'id': user.id,
+        'full_name': user.name,
+        'email': user.email,
+        'phone': user.phone_number,
+        'role': user.role
+    }}), 200
 
 
 def create_password_reset_code(email):

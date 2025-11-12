@@ -2,20 +2,18 @@ from app import db
 from app.models import Schedules
 from datetime import datetime, timezone
 from .auth import company_or_admin_required
-from flask import Blueprint, jsonify, request, abort, current_app
-
+from flask import Blueprint, jsonify, request, abort
 
 schedules_bp = Blueprint('schedules', __name__)
 
 @schedules_bp.route('/create', methods=["POST"])
 @company_or_admin_required
 def schedule_bus():
-    """ Create a schedule for a bus """
-
+    """Create a schedule for a bus."""
     data = request.get_json()
     if not data:
-        abort(400, description='data not provided')
-    
+        abort(400, description='Data not provided')
+
     departure_time = data.get('departure_time')
     arrival_time = data.get('arrival_time')
     price = data.get('price')
@@ -23,33 +21,28 @@ def schedule_bus():
     available_seats = data.get('available_seats')
     bus_id = data.get('bus_id')
 
-
-
     if not all([departure_time, arrival_time, price, available_seats, bus_id, route_id]):
-        abort(400, description='required data is missing')
+        abort(400, description='Required data is missing')
 
     try:
-        departure_time = datetime.strptime(departure_time, '%Y,%m,%d,%H,%M,%S')
-        arrival_time = datetime.strptime(arrival_time, '%Y,%m,%d,%H,%M,%S')
+        departure_time = datetime.strptime(departure_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
+        arrival_time = datetime.strptime(arrival_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
     except ValueError:
-        return jsonify({"message": f"date and time must be YYYY,MM,DD,HH,MM,SS"}), 400
-
-    departure_time = departure_time.replace(tzinfo=timezone.utc)
-    arrival_time = arrival_time.replace(tzinfo=timezone.utc)
+        return jsonify({"message": "Date and time must be YYYY,MM,DD,HH,MM,SS"}), 400
 
     schedule = Schedules(
-        departure_time=departure_time, arrival_time=arrival_time, price=price,
+        departure_time=departure_time,
+        arrival_time=arrival_time,
+        price=price,
+        available_seats=available_seats,
+        route_id=route_id,
+        bus_id=bus_id
     )
-    
-    schedule = Schedules(
-        departure_time=departure_time, arrival_time=arrival_time, price=price,
-        available_seats=available_seats, route_id=route_id, bus_id=bus_id
-    )
+
     try:
         db.session.add(schedule)
         db.session.commit()
     except Exception as e:
-        # abort(500)
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
@@ -58,11 +51,9 @@ def schedule_bus():
 
 @schedules_bp.route('/get', methods=["GET"])
 def get_schedules():
-    """ Get all available schedules """
-
+    """Get all available schedules."""
     schedules = Schedules.query.all()
-    if schedules == []:
-        return jsonify({"message": "schedules not available", "schedules": []})
+    if not schedules:
+        return jsonify({"message": "Schedules not available", "schedules": []}), 200
 
     return jsonify({"schedules": [schedule.to_dict() for schedule in schedules]}), 200
-

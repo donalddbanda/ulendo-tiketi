@@ -40,7 +40,7 @@ function AppContent() {
   const handleSearch = (origin: string, destination: string, date: string) => {
     setSearchParams({ origin, destination, date });
     setCurrentView('search');
-    window.history.pushState({}, '', '/search');
+    window.history.pushState({}, '', '/search/schedule');
   };
 
   const handleBook = (scheduleId: string) => {

@@ -1,5 +1,7 @@
 // API service for Python backend integration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Normalize base URL: ensure it contains the `/api` prefix and no trailing slash
+const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = RAW_API.replace(/\/$/, '') + '/api';
 
 export interface User {
   id: string;
@@ -46,18 +48,18 @@ export interface Booking {
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = localStorage.getItem('auth_token');
-    
-    const config = {
+    // If backend uses session cookies (flask-login), include credentials
+    const config: RequestInit = {
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
       ...options,
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const url = `${API_BASE_URL}${endpoint}`;
+    const response = await fetch(url, config);
     
     if (!response.ok) {
       throw new Error(`API Error: ${response.statusText}`);
@@ -67,7 +69,7 @@ class ApiService {
   }
 
   // Authentication
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string): Promise<any> {
     return this.request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -80,7 +82,7 @@ class ApiService {
     full_name: string;
     role: 'passenger' | 'company';
     phone?: string;
-  }): Promise<{ user: User; token: string }> {
+  }): Promise<any> {
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
@@ -93,10 +95,19 @@ class ApiService {
     destination: string;
     date: string;
   }): Promise<Schedule[]> {
-    return this.request('/schedules/search', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
+    // Backend exposes search under GET /api/search/schedules
+    const qs = new URLSearchParams();
+    if (params.origin) qs.set('origin', params.origin);
+    if (params.destination) qs.set('destination', params.destination);
+    if (params.date) qs.set('date', params.date);
+
+    const queryString = qs.toString();
+    const endpoint = `/search/schedules${queryString ? `?${queryString}` : ''}`;
+    const resp: any = await this.request(endpoint, { method: 'GET' });
+    // Backend returns { count, schedules: [...] } -- normalize to array
+    if (Array.isArray(resp)) return resp as Schedule[];
+    if (resp && Array.isArray(resp.schedules)) return resp.schedules as Schedule[];
+    return [];
   }
 
   // Bookings
@@ -137,6 +148,11 @@ class ApiService {
 
   async getLiveLocation(busId: string): Promise<any> {
     return this.request(`/gis/buses/${busId}/location`);
+  }
+
+  // Authentication helper for session-based auth
+  async whoami(): Promise<any> {
+    return this.request('/auth/whoami', { method: 'GET' });
   }
 }
 

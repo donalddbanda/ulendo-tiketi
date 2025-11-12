@@ -16,13 +16,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on app start
-    const userData = localStorage.getItem('user_data');
-    
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    setLoading(false);
+    // Try to hydrate current user from the backend session first
+    (async () => {
+      try {
+        const resp = await apiService.whoami();
+        const remoteUser: any = resp?.user;
+        if (remoteUser) {
+          const normalized: User = {
+            id: String(remoteUser.id),
+            email: remoteUser.email || '',
+            full_name: remoteUser.full_name || remoteUser.name || '',
+            role: (remoteUser.role || 'passenger') as User['role'],
+            phone: remoteUser.phone || remoteUser.phone_number || undefined,
+          };
+          setUser(normalized);
+          localStorage.setItem('user_data', JSON.stringify(normalized));
+        } else {
+          // fallback to localStorage if any
+          const userData = localStorage.getItem('user_data');
+          if (userData) setUser(JSON.parse(userData));
+        }
+      } catch (e) {
+        // ignore and fallback to localStorage
+        const userData = localStorage.getItem('user_data');
+        if (userData) setUser(JSON.parse(userData));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -40,10 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { user: userData, token } = await apiService.login(email, password);
-      setUser(userData);
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
+      const resp = await apiService.login(email, password);
+      // Backend may return { user: { ... } } or { user: { full_name } }
+      const rawUser: any = resp?.user || resp;
+      const normalized: User = {
+        id: String(rawUser.id),
+        email: rawUser.email || '',
+        full_name: rawUser.full_name || rawUser.name || '',
+        role: (rawUser.role || 'passenger') as User['role'],
+        phone: rawUser.phone || rawUser.phone_number || undefined,
+      };
+
+      setUser(normalized);
+      // Backend uses session cookies; no token expected
+      localStorage.setItem('user_data', JSON.stringify(normalized));
     } catch (error) {
       throw error;
     }
@@ -51,16 +82,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName: string, role: 'passenger' | 'company', phone?: string) => {
     try {
-      const { user: userData, token } = await apiService.register({
+      const resp = await apiService.register({
         email,
         password,
         full_name: fullName,
         role,
         phone,
       });
-      setUser(userData);
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(userData));
+      const rawUser: any = resp?.user || resp;
+      const normalized: User = {
+        id: String(rawUser.id),
+        email: rawUser.email || '',
+        full_name: rawUser.full_name || rawUser.name || '',
+        role: (rawUser.role || 'passenger') as User['role'],
+        phone: rawUser.phone || rawUser.phone_number || undefined,
+      };
+
+      setUser(normalized);
+      localStorage.setItem('user_data', JSON.stringify(normalized));
     } catch (error) {
       throw error;
     }

@@ -18,7 +18,13 @@ export function SearchResults({ origin, destination, date, onBack, onBook, onSho
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadSchedules();
+    // Only load schedules when at least origin and destination are provided
+    if (origin && destination) {
+      loadSchedules();
+    } else {
+      setSchedules([]);
+      setLoading(false);
+    }
   }, [origin, destination, date]);
 
   const loadSchedules = async () => {

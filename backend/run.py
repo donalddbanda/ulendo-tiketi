@@ -1,14 +1,19 @@
 import os
 from app import create_app
+from dotenv import load_dotenv
 
-# Get environment from FLASK_ENV or default to development
-env = os.getenv('FLASK_ENV', 'development')
+# Load environment variables from .env file if it exists
+load_dotenv()
 
-app = create_app(env)
+# Get environment, host, port, debug from environment variables or defaults
+FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
+FLASK_PORT = int(os.getenv('FLASK_PORT', 5000))
+FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
 
+# Create Flask app with the selected environment
+app = create_app(FLASK_ENV)
+
+# Run app
 if __name__ == '__main__':
-    host = os.getenv('FLASK_HOST', '0.0.0.0')
-    port = int(os.getenv('FLASK_PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)

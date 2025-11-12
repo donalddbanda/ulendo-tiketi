@@ -1,21 +1,27 @@
-import os
-from dotenv import load_dotenv
-from flask_mail import Mail
-from flask_cors import CORS
-from flask_migrate import Migrate
-from flask_login import LoginManager
-from paychangu import PayChanguClient
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_cors import CORS
+from flask_mail import Mail
+from flask_login import LoginManager
 
-
-load_dotenv()
-
-mail = Mail()
-cors = CORS()
 db = SQLAlchemy()
-login = LoginManager()
-login.login_view = 'auth.login'
 migrate = Migrate()
-paychangu_client = PayChanguClient(secret_key=os.getenv('PAYCHANGU_API_KEY'))
+cors = CORS()
+mail = Mail()
+login = LoginManager()
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_cors import CORS
+from flask_mail import Mail
+from flask_login import LoginManager
 
+# Flask extensions
+db = SQLAlchemy()
+migrate = Migrate()
+cors = CORS()
+mail = Mail()
+login = LoginManager()
 
+# PayChangu client placeholder
+# You can initialize it later with API key from config
+paychangu_client = None
