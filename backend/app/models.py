@@ -406,4 +406,64 @@ class PasswordResetCode(db.Model):
     
     def __repr__(self):
         return f"<PasswordResetToken {self.id} | {self.email}>"
+
+
+class EmployeeInvitation(db.Model):
+    """Model to track employee invitations to join a company/branch"""
+    __tablename__ = 'employee_invitations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    phone_number = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(100), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=True, index=True)
+    invited_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
+    invitation_code = db.Column(db.String(100), nullable=False, unique=True)
+    status = db.Column(db.String(50), default='pending', index=True)
+    # Status values: 'pending', 'accepted', 'expired', 'cancelled'
+    
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc) + timedelta(days=7), index=True)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    company = db.relationship('BusCompanies', backref='invitations')
+    branch = db.relationship('Branches', backref='invitations')
+    inviter = db.relationship('Users', backref='sent_invitations')
+
+    def generate_invitation_code(self):
+        """Generate unique invitation code"""
+        import secrets
+        self.invitation_code = secrets.token_urlsafe(32)
+        return self.invitation_code
+    
+    def is_valid(self):
+        """Check if invitation is still valid"""
+        if self.status != 'pending':
+            return False, f"Invitation already {self.status}"
+        
+        now = datetime.now(timezone.utc)
+        if now > self.expires_at:
+            self.status = 'expired'
+            return False, "Invitation has expired"
+        
+        return True, "Valid"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "phone_number": self.phone_number,
+            "role": self.role,
+            "company_id": self.company_id,
+            "branch_id": self.branch_id,
+            "status": self.status,
+            "created_at": self.created_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
+            "accepted_at": self.accepted_at.isoformat() if self.accepted_at else None
+        }
+
+    def __repr__(self):
+        return f"<EmployeeInvitation {self.id} | {self.email} | {self.role}>"
