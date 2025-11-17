@@ -41,6 +41,50 @@ class Users(db.Model, UserMixin):
                 "branch_id": self.branch_id
             }
         }
+    
+    def is_company_owner(self):
+        """Check if user is a company owner"""
+        return self.role.lower() == 'company_owner'
+    
+    def is_branch_manager(self):
+        """Check if user is a branch manager"""
+        return self.role.lower() == 'branch_manager'
+    
+    def is_accounts_manager(self):
+        """Check if user is an accounts/finance manager"""
+        return self.role.lower() == 'accounts_manager'
+    
+    def is_bus_manager(self):
+        """Check if user is a bus manager"""
+        return self.role.lower() == 'bus_manager'
+    
+    def is_conductor(self):
+        """Check if user is a bus conductor"""
+        return self.role.lower() == 'conductor'
+    
+    def is_schedule_manager(self):
+        """Check if user is a schedule manager"""
+        return self.role.lower() == 'schedule_manager'
+    
+    def has_company_role(self):
+        """Check if user has any company-related role"""
+        company_roles = ['company_owner', 'branch_manager', 'accounts_manager', 
+                        'bus_manager', 'conductor', 'schedule_manager']
+        return self.role.lower() in company_roles
+    
+    def can_manage_branch(self, branch_id):
+        """Check if user can manage a specific branch"""
+        if self.is_company_owner() and self.company_id:
+            # Company owners can manage all branches in their company
+            return True
+        if self.is_branch_manager() and self.branch_id == branch_id:
+            # Branch managers can only manage their assigned branch
+            return True
+        return False
+    
+    def can_access_company_data(self, company_id):
+        """Check if user can access company data"""
+        return self.company_id == company_id and self.has_company_role()
 
     def __repr__(self):
         return f"<User {self.id}|{self.name}>"
@@ -109,6 +153,7 @@ class Buses(db.Model):
     __tablename__ = 'buses'
 
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=True)
     bus_number = db.Column(db.String(100), nullable=False, unique=True, index=True)
     seating_capacity = db.Column(db.Integer, nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
@@ -361,3 +406,4 @@ class PasswordResetCode(db.Model):
     
     def __repr__(self):
         return f"<PasswordResetToken {self.id} | {self.email}>"
+    
