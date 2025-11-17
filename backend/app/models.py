@@ -11,14 +11,17 @@ class Users(db.Model, UserMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(100), nullable=False, default='passenger')
+    role = db.Column(db.String(100), nullable=False, default='passenger', index=True)
     phone_number = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
-    # Use Text for password_hash because some hashing algorithms (scrypt) produce
-    # strings longer than 128 characters. Text avoids unexpected truncation errors.
     password_hash = db.Column(db.Text, nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), index=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), index=True)
 
     bookings = db.relationship('Bookings', backref='user', lazy=True)
+    companies_owned = db.relationship('BusCompanies', backref='owner', lazy=True)
+    managed_branches = db.relationship('Branches', backref='manager', lazy=True)
+    assigned_buses = db.relationship('Buses', backref='conductor', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -33,7 +36,9 @@ class Users(db.Model, UserMixin):
                 "name": self.name,
                 "role": self.role,
                 "phone_number": self.phone_number,
-                "email": self.email
+                "email": self.email,
+                "company_id": self.company_id,
+                "branch_id": self.branch_id
             }
         }
 
@@ -56,9 +61,11 @@ class BusCompanies(db.Model):
     account_details = db.Column(db.JSON, nullable=False)
     status = db.Column(db.String(50), default='pending', index=True)
     balance = db.Column(db.Float, nullable=False, default=0.0)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
 
     buses = db.relationship('Buses', backref='company', lazy=True)
     payouts = db.relationship('Payouts', backref='company', lazy=True)
+    branches = db.relationship('Branches', backref='company', lazy=True)
 
     def to_dict(self):
         return {
@@ -66,6 +73,7 @@ class BusCompanies(db.Model):
             "name": self.name,
             "description": self.description,
             "status": self.status,
+            "owner_id": self.owner_id
         }
     
     def can_add_bus(self):
@@ -75,16 +83,40 @@ class BusCompanies(db.Model):
         return f"<Company {self.id}|{self.name}>"
 
 
+class Branches(db.Model):
+    __tablename__ = 'branches'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+
+    buses = db.relationship('Buses', backref='branch', lazy=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "company_id": self.company_id,
+            "manager_id": self.manager_id
+        }
+
+    def __repr__(self):
+        return f"<Branch {self.id}|{self.name}>"
+
+
 class Buses(db.Model):
     __tablename__ = 'buses'
 
     id = db.Column(db.Integer, primary_key=True)
-    bus_number = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    bus_number = db.Column(db.String(100), nullable=False, unique=True, index=True)
     seating_capacity = db.Column(db.Integer, nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False, index=True)
+    conductor_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
 
-    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False)
     schedules = db.relationship('Schedules', backref='bus', lazy=True)
-
 
     def __repr__(self):
         return f"<Bus {self.id}|{self.bus_number}>"
@@ -92,9 +124,12 @@ class Buses(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "name": self.name,
             "bus_number": self.bus_number,
             "seating_capacity": self.seating_capacity,
-            "company_id": self.company_id
+            "company_id": self.company_id,
+            "branch_id": self.branch_id,
+            "conductor_id": self.conductor_id
         }
 
 
@@ -102,15 +137,19 @@ class Routes(db.Model):
     __tablename__ = 'routes'
 
     id = db.Column(db.Integer, primary_key=True)
-    origin = db.Column(db.String(100), nullable=False)
-    destination = db.Column(db.String(100), nullable=False)
+    origin = db.Column(db.String(100), nullable=False, index=True)
+    destination = db.Column(db.String(100), nullable=False, index=True)
     distance = db.Column(db.Float, nullable=True)
 
     schedules = db.relationship('Schedules', backref='route', lazy=True)
 
+    # Composite index for origin-destination pair
+    __table_args__ = (
+        db.Index('ix_routes_origin_destination', 'origin', 'destination'),
+    )
 
     def __repr__(self):
-        return f"<>Route {self.id} | {self.origin} to {self.destination}>"
+        return f"<Route {self.id} | {self.origin} to {self.destination}>"
 
     def to_dict(self):
         return {
@@ -125,13 +164,12 @@ class Schedules(db.Model):
     __tablename__ = 'schedules'
 
     id = db.Column(db.Integer, primary_key=True)
-    departure_time = db.Column(db.DateTime, nullable=False)
+    departure_time = db.Column(db.DateTime, nullable=False, index=True)
     arrival_time = db.Column(db.DateTime, nullable=False)
-    route_id = db.Column(db.Integer, db.ForeignKey('routes.id'), nullable=False)
-    bus_id = db.Column(db.Integer, db.ForeignKey('buses.id'), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('routes.id'), nullable=False, index=True)
+    bus_id = db.Column(db.Integer, db.ForeignKey('buses.id'), nullable=False, index=True)
     price = db.Column(db.Float, nullable=False)
-    available_seats = db.Column(db.Integer, nullable=False)
-
+    available_seats = db.Column(db.Integer, nullable=False, index=True)
 
     bookings = db.relationship('Bookings', backref='schedule', lazy=True)
 
@@ -161,15 +199,15 @@ class Bookings(db.Model):
     # Status values: 'unused', 'used', 'expired'
     
     payment_link = db.Column(db.String(200), nullable=True)
-    tx_ref = db.Column(db.String(100), nullable=True, unique=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    tx_ref = db.Column(db.String(100), nullable=True, unique=True, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc), index=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
     boarded_at = db.Column(db.DateTime, nullable=True)  # Track when passenger boarded
 
     # Relationships
     transactions = db.relationship('Transactions', backref='booking', lazy=True)
-    schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    schedule_id = db.Column(db.Integer, db.ForeignKey('schedules.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
 
     def generate_qr_reference(self):
         """Generate unique QR code reference"""
@@ -248,7 +286,7 @@ class Payouts(db.Model):
     status = db.Column(db.String(50), nullable=False, default='pending', index=True)
     # Status values: 'pending', 'processing', 'completed', 'failed', 'cancelled', 'rejected'
     
-    requested_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    requested_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc), index=True)
     processed_at = db.Column(db.DateTime, nullable=True)
     
     # PayChangu integration fields
@@ -257,7 +295,7 @@ class Payouts(db.Model):
     paychangu_status = db.Column(db.String(50), nullable=True)
     # PayChangu status values: 'pending', 'successful', 'failed', 'cancelled'
 
-    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
 
     def to_dict(self):
         return {
@@ -284,11 +322,11 @@ class Transactions(db.Model):
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='pending', index=True)
     method = db.Column(db.String(50), nullable=False, default='paychangu')
-    reference = db.Column(db.String(100), nullable=False, unique=True)  # tx_ref from PayChangu
-    payment_status = db.Column(db.String(50), nullable=False, default='pending')
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    reference = db.Column(db.String(100), nullable=False, unique=True, index=True)  # tx_ref from PayChangu
+    payment_status = db.Column(db.String(50), nullable=False, default='pending', index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc), index=True)
     completed_at = db.Column(db.DateTime, nullable=True)
-    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False, index=True)
 
     def to_dict(self):
         return {
@@ -311,10 +349,10 @@ class PasswordResetCode(db.Model):
     __tablename__ = 'password_reset_tokens'
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(120), nullable=False, index=True)
     code = db.Column(db.String(100), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
-    expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(minutes=10))
+    expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(minutes=10), index=True)
 
     def create_code(self):
         self.code = random.randrange(100000, 999999)
