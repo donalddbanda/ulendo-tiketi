@@ -109,7 +109,6 @@ class Buses(db.Model):
     __tablename__ = 'buses'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=True)
     bus_number = db.Column(db.String(100), nullable=False, unique=True, index=True)
     seating_capacity = db.Column(db.Integer, nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
