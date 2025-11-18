@@ -1,14 +1,14 @@
 from app import db
 from flask_login import current_user
 from app.models import Buses, BusCompanies
-from .auth import company_or_admin_required
+from .auth import schedule_or_bus_manager_required
 from flask import jsonify, Blueprint, abort, request
 
 
 buses_bp = Blueprint('buses', __name__)
 
 @buses_bp.route('/add', methods=["POST"])
-@company_owner_or_admin_required
+@schedule_or_bus_manager_required
 def add_bus():
     """ Add bus (admin or company) """
 

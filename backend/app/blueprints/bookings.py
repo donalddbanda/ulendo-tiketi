@@ -2,10 +2,10 @@ from app import db
 from datetime import datetime, timezone
 from ..utils.payments import create_payment_link
 from app.models import Bookings, Schedules, Users
-from flask_login import login_required, current_user
+from flask_login import current_user
 from flask import Blueprint, request, jsonify, abort, send_file
 from ..utils.qr_generator import generate_qr_code_image, parse_qr_reference
-from .auth import passenger_required, passenger_or_admin_required, company_or_admin_required
+from .auth import passenger_required, passenger_or_admin_required, conductor_required
 
 
 bookings_bp = Blueprint('bookings', __name__)
@@ -246,7 +246,7 @@ def get_qr_code_data(booking_id: int):
 
 
 @bookings_bp.route('/verify-qr', methods=['POST'])
-@company_owner_or_admin_required
+@conductor_required
 def verify_qr_code():
     """
     Verify QR code for boarding (terminal verification).

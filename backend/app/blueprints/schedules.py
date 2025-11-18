@@ -1,13 +1,13 @@
 from app import db
 from app.models import Schedules
 from datetime import datetime, timezone
-from .auth import company_or_admin_required
+from .auth import schedule_manager_required
 from flask import Blueprint, jsonify, request, abort
 
 schedules_bp = Blueprint('schedules', __name__)
 
 @schedules_bp.route('/create', methods=["POST"])
-@company_owner_or_admin_required
+@schedule_manager_required
 def schedule_bus():
     """Create a schedule for a bus."""
     data = request.get_json()

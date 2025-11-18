@@ -4,7 +4,7 @@ from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, request, jsonify, abort
 from ..utils.paychangu_payouts import get_available_banks
-from .auth import admin_required, company_or_admin_required
+from .auth import admin_required, company_owner_or_admin_required
 
 
 companies_bp = Blueprint('companies', __name__)
@@ -316,7 +316,7 @@ def review_company_registration(id: int, action: str):
 
 
 @companies_bp.route('/update/<int:id>', methods=["PUT", "POST"])
-@company_or_admin_required
+@company_owner_or_admin_required
 def update_company_info(id: int):
     """Update company details"""
     company = BusCompanies.query.filter_by(id=id).first()
