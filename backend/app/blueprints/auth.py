@@ -204,7 +204,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 def passenger_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -215,17 +214,15 @@ def passenger_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-def company_required(f):
+def company_owner_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != 'company':
+        if current_user.role.lower() != 'company_owner':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
-
 
 def passenger_or_admin_required(f):
     @wraps(f)
@@ -237,24 +234,80 @@ def passenger_or_admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-def company_or_admin_required(f):
+def company_owner_or_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ['admin', 'company']:
+        if current_user.role.lower() not in ['admin', 'company_owner']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
-
-def company_not_required(f):
+def company_owner_not_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_authenticated and current_user.role.lower() == 'company':
+        if current_user.is_authenticated and current_user.role.lower() == 'company_owner':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
+def accounts_manger_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.lower() not in ["account_manager", "company_owner"]:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
 
+def conductor_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.lower() != "conductor":
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def branch_manager_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.lower() not in ['company_owner', 'branch_manager']:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def accounts_manager(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.lower() not in ['company_owner', 'accounts_manager']:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def schedule_or_bus_manager_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.ower() not in ['bus_manager', 'schedule_manager']:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def schedule_manager_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_anonymous:
+            abort(401)
+        if current_user.role.ower() != 'schedule_manager':
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
