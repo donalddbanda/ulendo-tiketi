@@ -26,15 +26,17 @@ def register_bus_company():
     {
         "company": {
             "name": "ABC Bus Company",
-            "description": "Premium bus services",
-            "phone_numbers": ["+265999123456", "+265888123456"],
-            "email": "contact@abcbus.com"
+            "description": "Premium bus services"
         },
         "owner": {
             "full_name": "John Doe",
             "email": "john@abcbus.com",
             "phone_number": "+265991234567",
             "password": "SecurePassword123"
+        },
+        "contact_info": {
+            "phone_numbers": ["+265999123456", "+265888123456"],
+            "email": "contact@abcbus.com"
         },
         "bank_account": {
             "bank_name": "National Bank of Malawi",
