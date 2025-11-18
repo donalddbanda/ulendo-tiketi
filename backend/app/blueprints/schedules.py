@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request, abort
 schedules_bp = Blueprint('schedules', __name__)
 
 @schedules_bp.route('/create', methods=["POST"])
-@company_or_admin_required
+@company_owner_or_admin_required
 def schedule_bus():
     """Create a schedule for a bus."""
     data = request.get_json()

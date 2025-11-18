@@ -8,7 +8,7 @@ from flask import jsonify, Blueprint, abort, request
 buses_bp = Blueprint('buses', __name__)
 
 @buses_bp.route('/add', methods=["POST"])
-@company_or_admin_required
+@company_owner_or_admin_required
 def add_bus():
     """ Add bus (admin or company) """
 

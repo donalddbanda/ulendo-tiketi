@@ -11,7 +11,7 @@ payouts_bp = Blueprint('payouts', __name__)
 
 
 @payouts_bp.route('/request', methods=["POST"])
-@company_or_admin_required
+@company_owner_or_admin_required
 def request_payout():
     """
     Request payout for company earnings.
@@ -73,7 +73,7 @@ def request_payout():
 
 
 @payouts_bp.route('/list', methods=['GET'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def list_payouts():
     """
     Get payout history.
@@ -105,7 +105,7 @@ def list_payouts():
 
 
 @payouts_bp.route('/<int:payout_id>', methods=['GET'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def get_payout(payout_id: int):
     """Get specific payout details"""
     
@@ -206,7 +206,7 @@ def process_payout(payout_id: int):
 
 
 @payouts_bp.route('/cancel/<int:payout_id>', methods=['POST', 'DELETE'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def cancel_payout(payout_id: int):
     """
     Cancel a pending payout request.
@@ -241,7 +241,7 @@ def cancel_payout(payout_id: int):
 
 
 @payouts_bp.route('/balance', methods=['GET'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def get_balance():
     """
     Get company balance and payout summary.

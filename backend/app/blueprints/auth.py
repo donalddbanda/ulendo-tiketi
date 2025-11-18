@@ -252,7 +252,7 @@ def company_owner_not_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def accounts_manger_required(f):
+def accounts_manager_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
@@ -282,22 +282,12 @@ def branch_manager_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def accounts_manager(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if current_user.is_anonymous:
-            abort(401)
-        if current_user.role.lower() not in ['company_owner', 'accounts_manager']:
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
-
 def schedule_or_bus_manager_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.ower() not in ['bus_manager', 'schedule_manager']:
+        if current_user.role.lower() not in ['bus_manager', 'schedule_manager']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -307,7 +297,7 @@ def schedule_manager_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.ower() != 'schedule_manager':
+        if current_user.role.lower() != 'schedule_manager':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

@@ -246,7 +246,7 @@ def get_qr_code_data(booking_id: int):
 
 
 @bookings_bp.route('/verify-qr', methods=['POST'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def verify_qr_code():
     """
     Verify QR code for boarding (terminal verification).

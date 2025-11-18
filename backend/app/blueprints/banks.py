@@ -73,7 +73,7 @@ def get_banks_list():
 
 
 @banks_bp.route('/account/update', methods=['POST', 'PUT'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def update_bank_account():
     """
     Update company bank account details.
@@ -143,7 +143,7 @@ def update_bank_account():
 
 
 @banks_bp.route('/account', methods=['GET'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def get_bank_account():
     """
     Get company bank account details.
@@ -184,7 +184,7 @@ def get_bank_account():
 
 
 @banks_bp.route('/account/delete', methods=['DELETE', 'POST'])
-@company_or_admin_required
+@company_owner_or_admin_required
 def delete_bank_account():
     """
     Remove bank account details.
