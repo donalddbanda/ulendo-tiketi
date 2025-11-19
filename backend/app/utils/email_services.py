@@ -12,18 +12,36 @@ def send_password_reset_code_email(code, email):
     mail.send(msg)
 
 
-def send_employee_invitation_email(invite_code: str, email: str, company_name: str = ''):
-    """Send an invitation email to a prospective employee. This is a best-effort helper; if mail isn't configured it will raise from flask-mail."""
-    subject = f"You're invited to join {company_name or 'a company'} on Ulendo Tiketi"
-    body = f"You have been invited to join {company_name or 'a company'} on Ulendo Tiketi. Use this code to accept the invitation: {invite_code}" 
+def send_employee_invitation_email(invitation_data):
+    """Send employee invitation email"""
+    from flask_mail import Message
+    from flask import current_app
+    from ..extensions import mail
+    
     msg = Message(
-        subject=subject,
-        body=body,
-        sender=current_app.config.get('MAIL_DEFAULT_SENDER'),
-        recipients=[email]
+        subject=f'Invitation to join {invitation_data["company_name"]}',
+        recipients=[invitation_data['email']],
+        sender=current_app.config['MAIL_DEFAULT_SENDER']
     )
+    
+    msg.body = f"""
+    Hello {invitation_data['full_name']},
+    
+    You have been invited to join {invitation_data['company_name']} as a {invitation_data['role']}.
+    Branch: {invitation_data['branch_name']}
+    
+    To accept this invitation, please visit:
+    {invitation_data['invitation_link']}
+    
+    Or use this code: {invitation_data['invitation_code']}
+    
+    This invitation expires on {invitation_data['expires_at']}
+    
+    Best regards,
+    Ulendo Tiketi Team
+    """
+    
     try:
         mail.send(msg)
-    except Exception:
-        # Fail silently in environments without email configured
-        current_app.logger.debug('Failed to send invite email to %s', email)
+    except Exception as e:
+        print(f"Failed to send invitation email: {e}")

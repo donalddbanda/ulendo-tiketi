@@ -445,7 +445,7 @@ def check_qr_status(booking_id: int):
 
 
 @bookings_bp.route('/scan-qr', methods=["POST"])
-@login_required
+@conductor_required
 def scan_qr():
     """Scan and validate a QR code for boarding."""
     from app.models import Conductors, Employees
