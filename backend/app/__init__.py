@@ -65,6 +65,7 @@ def register_blueprints(app: Flask):
     from app.blueprints.banks import banks_bp
     from app.blueprints.branches import branches_bp
     from app.blueprints.employees import employees_bp
+    from app.blueprints.dashboard import dashboard_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -79,6 +80,7 @@ def register_blueprints(app: Flask):
     app.register_blueprint(banks_bp, url_prefix='/api/banks')
     app.register_blueprint(branches_bp, url_prefix='/api/branches')
     app.register_blueprint(employees_bp, url_prefix='/api/employees')
+    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
 
 
 def register_error_handlers(app: Flask):
