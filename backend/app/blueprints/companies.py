@@ -2,7 +2,7 @@ from app import db
 from app.models import BusCompanies, Users, Branches
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
-from flask import Blueprint, request, jsonify, abort
+from flask import Blueprint, request, jsonify, abort, current_app
 from ..utils.paychangu_payouts import get_available_banks
 from .auth import admin_required, company_owner_or_admin_required
 

@@ -14,11 +14,11 @@ export function AuthModal({ type, onClose }: AuthModalProps) {
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    email: '',
+    loginIdentifier: '',  // email or phone for login
+    email: '',  // optional email for registration
     password: '',
     fullName: '',
     phone: '',
-    role: 'passenger' as 'passenger' | 'company',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,9 +28,10 @@ export function AuthModal({ type, onClose }: AuthModalProps) {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        await login(formData.loginIdentifier, formData.password);
       } else {
-        await register(formData.email, formData.password, formData.fullName, formData.role, formData.phone);
+        // For registration, use email if provided, otherwise let backend generate placeholder
+        await register(formData.email || formData.phone, formData.password, formData.fullName, 'passenger', formData.phone);
       }
       onClose();
     } catch (err: any) {
@@ -82,12 +83,13 @@ export function AuthModal({ type, onClose }: AuthModalProps) {
 
               <div>
                 <label className="block text-sm font-medium text-[#0A2239] mb-2">
-                  Phone Number
+                  Phone Number *
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="tel"
+                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
@@ -98,31 +100,17 @@ export function AuthModal({ type, onClose }: AuthModalProps) {
 
               <div>
                 <label className="block text-sm font-medium text-[#0A2239] mb-2">
-                  Account Type
+                  Email (optional)
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: 'passenger' })}
-                    className={`py-3 px-4 rounded-lg border-2 font-medium transition-all ${
-                      formData.role === 'passenger'
-                        ? 'border-[#0057A4] bg-[#0057A4] text-white'
-                        : 'border-gray-300 hover:border-[#0057A4] text-[#0A2239]'
-                    }`}
-                  >
-                    Passenger
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, role: 'company' })}
-                    className={`py-3 px-4 rounded-lg border-2 font-medium transition-all ${
-                      formData.role === 'company'
-                        ? 'border-[#0057A4] bg-[#0057A4] text-white'
-                        : 'border-gray-300 hover:border-[#0057A4] text-[#0A2239]'
-                    }`}
-                  >
-                    Bus Company
-                  </button>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
+                    placeholder="you@example.com (optional)"
+                  />
                 </div>
               </div>
             </>
@@ -130,37 +118,56 @@ export function AuthModal({ type, onClose }: AuthModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-[#0A2239] mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#0A2239] mb-2">
-              Password
+              {isLogin ? 'Email or Phone Number' : 'Password'}
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="password"
-                required
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
-                placeholder="••••••••"
-              />
+              {isLogin ? (
+                <input
+                  type="text"
+                  required
+                  value={formData.loginIdentifier}
+                  onChange={(e) => setFormData({ ...formData, loginIdentifier: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
+                  placeholder="you@example.com or +265 999 123 456"
+                />
+              ) : (
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              )}
             </div>
           </div>
+
+          {isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-[#0A2239] mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0057A4] focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+          )}
+
+          {!isLogin && (
+            <div className="text-sm text-gray-600">
+              Companies must be registered by an admin. To join as a company, ask an admin to create your account — you'll receive a password reset link.
+            </div>
+          )}
 
           <button
             type="submit"

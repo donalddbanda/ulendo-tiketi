@@ -27,41 +27,25 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
   });
 
   useEffect(() => {
-    // For now, we'll use mock data since the Python backend isn't ready
-    loadMockScheduleDetails();
-    loadMockBookedSeats();
+    loadScheduleDetails();
   }, [scheduleId]);
 
-  const loadMockScheduleDetails = () => {
-    // Mock data - replace with actual API call when backend is ready
-    const mockSchedule = {
-      id: scheduleId,
-      departure_time: '2024-11-15T08:00:00Z',
-      arrival_time: '2024-11-15T14:00:00Z',
-      price: 15000,
-      available_seats: 24,
-      buses: {
-        bus_number: 'MBC-202',
-        seating_capacity: 32,
-        bus_type: 'Executive',
-        bus_companies: {
-          name: 'Malawi Bus Company',
-          logo_url: null
-        }
-      },
-      routes: {
-        origin: 'Lilongwe',
-        destination: 'Blantyre',
-        distance_km: 350,
-        estimated_duration_minutes: 360
+  const loadScheduleDetails = async () => {
+    try {
+      const schedule = await apiService.getSchedule(scheduleId);
+      setScheduleDetails(schedule);
+      
+      // Calculate booked seats from available seats
+      const capacity = schedule.bus?.seating_capacity || 32;
+      const booked = capacity - schedule.available_seats;
+      if (booked > 0) {
+        // Generate mock booked seats for display (would come from real data in production)
+        const bookedArray = Array.from({ length: Math.min(booked, capacity) }, (_, i) => i + 1);
+        setBookedSeats(bookedArray);
       }
-    };
-    setScheduleDetails(mockSchedule);
-  };
-
-  const loadMockBookedSeats = () => {
-    // Mock booked seats - replace with actual API call
-    setBookedSeats([1, 5, 12, 18, 24]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load schedule details');
+    }
   };
 
   const handleBooking = async () => {
@@ -70,26 +54,31 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
       return;
     }
 
+    if (!bookingData.passengerPhone) {
+      setError('Phone number is required');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      // Mock booking - replace with actual API call when backend is ready
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // TODO: Replace with actual API call
-      // await apiService.createBooking({
-      //   schedule_id: scheduleId,
-      //   seat_number: selectedSeat,
-      //   passenger_name: bookingData.passengerName,
-      //   passenger_phone: bookingData.passengerPhone,
-      //   passenger_email: bookingData.passengerEmail,
-      // });
+      // Create booking via API
+      const bookingResponse = await apiService.createBooking({
+        schedule_id: scheduleId,
+        seat_number: selectedSeat,
+      });
 
-      setSuccess(true);
-      setTimeout(() => {
-        onComplete();
-      }, 3000);
+      if (bookingResponse.payment_link) {
+        // Redirect to PayChangu payment page
+        window.location.href = bookingResponse.payment_link;
+      } else {
+        // Show success if payment link not needed
+        setSuccess(true);
+        setTimeout(() => {
+          onComplete();
+        }, 3000);
+      }
     } catch (err: any) {
       setError(err.message || 'Booking failed. Please try again.');
     } finally {
@@ -135,7 +124,7 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
     );
   }
 
-  const capacity = scheduleDetails.buses.seating_capacity;
+  const capacity = scheduleDetails.bus?.seating_capacity || scheduleDetails.buses?.seating_capacity || 32;
   const seats = Array.from({ length: capacity }, (_, i) => i + 1);
 
   return (
@@ -268,12 +257,14 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
               <div className="space-y-3 mb-6 text-sm">
                 <div>
                   <p className="text-gray-600">Company</p>
-                  <p className="font-semibold text-[#0A2239]">{scheduleDetails.buses.bus_companies.name}</p>
+                  <p className="font-semibold text-[#0A2239]">
+                    {scheduleDetails.bus?.company?.name || scheduleDetails.buses?.bus_companies?.name || 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-600">Route</p>
                   <p className="font-semibold text-[#0A2239]">
-                    {scheduleDetails.routes.origin} → {scheduleDetails.routes.destination}
+                    {scheduleDetails.route?.origin || scheduleDetails.routes?.origin || 'N/A'} → {scheduleDetails.route?.destination || scheduleDetails.routes?.destination || 'N/A'}
                   </p>
                 </div>
                 <div>

@@ -57,3 +57,77 @@ def get_schedules():
         return jsonify({"message": "Schedules not available", "schedules": []}), 200
 
     return jsonify({"schedules": [schedule.to_dict() for schedule in schedules]}), 200
+
+
+@schedules_bp.route('/<int:schedule_id>', methods=["GET"])
+def get_schedule(schedule_id: int):
+    """Get a specific schedule by ID."""
+    schedule = Schedules.query.filter_by(id=schedule_id).first()
+    if not schedule:
+        abort(404, description='Schedule not found')
+    
+    return jsonify(schedule.to_dict()), 200
+
+
+@schedules_bp.route('/company/schedules', methods=["GET"])
+@company_or_admin_required
+def get_company_schedules():
+    """Get all schedules for the company's buses."""
+    from app.models import Buses
+    from flask_login import current_user
+    from app.models import BusCompanies
+    
+    # Get user's company
+    if current_user.role == 'admin':
+        # Admin can pass company_id as query param
+        company_id = request.args.get('company_id', type=int)
+        if not company_id:
+            return jsonify({"error": "company_id required for admin"}), 400
+    else:
+        # Company owner gets their own company schedules
+        company = BusCompanies.query.filter_by(owner_id=current_user.id).first()
+        if not company:
+            return jsonify({"schedules": []}), 200
+        company_id = company.id
+
+    # Get all buses for this company
+    buses = Buses.query.filter_by(company_id=company_id).all()
+    bus_ids = [bus.id for bus in buses]
+    
+    if not bus_ids:
+        return jsonify({"schedules": []}), 200
+
+    # Get all schedules for these buses
+    schedules = Schedules.query.filter(Schedules.bus_id.in_(bus_ids)).all()
+    
+    return jsonify({"schedules": [schedule.to_dict() for schedule in schedules]}), 200
+
+
+@schedules_bp.route('/<int:schedule_id>/cancel', methods=["POST"])
+@company_or_admin_required
+def cancel_schedule(schedule_id: int):
+    """Cancel a schedule."""
+    from app.models import Buses, BusCompanies
+    from flask_login import current_user
+    
+    schedule = Schedules.query.filter_by(id=schedule_id).first()
+    if not schedule:
+        abort(404, description='Schedule not found')
+
+    # Verify permission: user owns the company that owns the bus
+    bus = Buses.query.filter_by(id=schedule.bus_id).first()
+    if not bus:
+        abort(404, description='Bus not found')
+
+    if current_user.role != 'admin':
+        company = BusCompanies.query.filter_by(id=bus.company_id, owner_id=current_user.id).first()
+        if not company:
+            abort(403, description='Unauthorized')
+
+    try:
+        db.session.delete(schedule)
+        db.session.commit()
+        return jsonify({"message": "Schedule cancelled"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
