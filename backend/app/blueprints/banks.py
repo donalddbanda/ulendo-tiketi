@@ -2,7 +2,7 @@ from app import db
 from app.models import BusCompanies
 from flask import Blueprint, request, jsonify, abort
 from flask_login import current_user
-from .auth import company_or_admin_required, admin_required
+from .auth import company_owner_or_admin_required, admin_required
 from ..utils.paychangu_payouts import get_available_banks
 
 

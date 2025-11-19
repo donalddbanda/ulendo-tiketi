@@ -237,6 +237,7 @@ class Bookings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
+    seat_number = db.Column(db.String(20), nullable=True, index=True)
     
     qr_code_reference = db.Column(db.String(100), nullable=True, unique=True, index=True)
     qr_code_reference_status = db.Column(db.String(20), nullable=False, default='unused', index=True)
