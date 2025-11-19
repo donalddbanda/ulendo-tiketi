@@ -1,7 +1,7 @@
 from app import db
 from flask_login import current_user
 from app.models import Buses, BusCompanies
-from .auth import company_or_admin_required
+from .auth import company_or_admin_required, login_required
 from flask import jsonify, Blueprint, abort, request
 
 
@@ -72,3 +72,85 @@ def get_buses():
         return jsonify({"message": "no buses found", "buses": []})
 
     return jsonify({"buses": [bus.to_dict() for bus in buses]})
+
+
+@buses_bp.route('/company', methods=["GET"])
+@company_or_admin_required
+def get_company_buses():
+    """ Get buses for current user's company """
+    company_id = request.args.get('company_id', type=int)
+    
+    if current_user.role.lower() == 'company':
+        company_id = current_user.id
+    elif not company_id:
+        abort(400, description='Company ID required for admin requests')
+    
+    buses = Buses.query.filter_by(company_id=company_id).all()
+    
+    return jsonify({
+        'buses': [bus.to_dict() for bus in buses]
+    }), 200
+
+
+@buses_bp.route('/<int:bus_id>', methods=["GET"])
+@login_required
+def get_bus(bus_id: int):
+    """ Get a specific bus """
+    bus = Buses.query.filter_by(id=bus_id).first()
+    if not bus:
+        abort(404, description='Bus not found')
+    
+    return jsonify(bus.to_dict()), 200
+
+
+@buses_bp.route('/<int:bus_id>/update', methods=['PUT', 'POST'])
+@company_or_admin_required
+def update_bus(bus_id: int):
+    """ Update bus details """
+    bus = Buses.query.filter_by(id=bus_id).first()
+    if not bus:
+        abort(404, description='Bus not found')
+    
+    # Check permissions
+    if current_user.role.lower() == 'company' and bus.company_id != current_user.id:
+        abort(403, description='Not authorized to update this bus')
+    
+    data = request.get_json()
+    if not data:
+        abort(400, description='Data not provided')
+    
+    if 'seating_capacity' in data:
+        bus.seating_capacity = data['seating_capacity']
+    
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    
+    return jsonify({
+        'message': 'Bus updated successfully',
+        'bus': bus.to_dict()
+    }), 200
+
+
+@buses_bp.route('/<int:bus_id>/delete', methods=['DELETE', 'POST'])
+@company_or_admin_required
+def delete_bus(bus_id: int):
+    """ Delete a bus """
+    bus = Buses.query.filter_by(id=bus_id).first()
+    if not bus:
+        abort(404, description='Bus not found')
+    
+    # Check permissions
+    if current_user.role.lower() == 'company' and bus.company_id != current_user.id:
+        abort(403, description='Not authorized to delete this bus')
+    
+    try:
+        db.session.delete(bus)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'message': 'Bus deleted successfully'}), 200

@@ -46,6 +46,100 @@ def load_user(user_id:int):
     return Users.query.get(int(user_id))
 
 
+class Passengers(db.Model):
+    __tablename__ = 'passengers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    # additional passenger-specific fields can be added here
+
+    user = db.relationship('Users', backref='passenger', uselist=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id
+        }
+
+
+class Conductors(db.Model):
+    __tablename__ = 'conductors'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    # additional conductor-specific fields can be added here
+
+    user = db.relationship('Users', backref='conductor', uselist=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id
+        }
+
+
+class Branches(db.Model):
+    __tablename__ = 'branches'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    location = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+
+    company = db.relationship('BusCompanies', backref='branches', lazy=True)
+    employees = db.relationship('Employees', backref='branch', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'location': self.location,
+            'phone': self.phone,
+            'company_id': self.company_id,
+            'created_at': self.created_at.isoformat(),
+            'employee_count': len(self.employees)
+        }
+
+    def __repr__(self):
+        return f"<Branch {self.id}|{self.name}>"
+
+
+class Employees(db.Model):
+    __tablename__ = 'employees'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), nullable=False)
+    employee_role = db.Column(db.String(100), nullable=False)  # e.g., 'branch_manager', 'accounts_manager', 'bus_manager', 'schedule_manager', 'conductor'
+    status = db.Column(db.String(50), default='active', nullable=False)  # 'active', 'inactive', 'pending'
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
+    approved_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('Users', backref='employee_records', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'branch_id': self.branch_id,
+            'employee_role': self.employee_role,
+            'status': self.status,
+            'created_at': self.created_at.isoformat(),
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'user': {
+                'id': self.user.id,
+                'name': self.user.name,
+                'email': self.user.email,
+                'phone_number': self.user.phone_number
+            } if self.user else None
+        }
+
+    def __repr__(self):
+        return f"<Employee {self.id}|{self.employee_role}>"
+
+
 class BusCompanies(db.Model):
     __tablename__ = 'bus_companies'
 
@@ -54,11 +148,14 @@ class BusCompanies(db.Model):
     description = db.Column(db.String(100), nullable=False)
     contact_info = db.Column(db.JSON, nullable=False)
     account_details = db.Column(db.JSON, nullable=False)
+    # Link to Users table so each company can have an associated auth user
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, unique=True)
     status = db.Column(db.String(50), default='pending', index=True)
     balance = db.Column(db.Float, nullable=False, default=0.0)
 
     buses = db.relationship('Buses', backref='company', lazy=True)
     payouts = db.relationship('Payouts', backref='company', lazy=True)
+    user = db.relationship('Users', backref='company', uselist=False)
 
     def to_dict(self):
         return {
@@ -83,6 +180,7 @@ class Buses(db.Model):
     seating_capacity = db.Column(db.Integer, nullable=False)
 
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False)
+    company = db.relationship('BusCompanies', backref='buses', lazy=True)
     schedules = db.relationship('Schedules', backref='bus', lazy=True)
 
 
@@ -94,7 +192,11 @@ class Buses(db.Model):
             "id": self.id,
             "bus_number": self.bus_number,
             "seating_capacity": self.seating_capacity,
-            "company_id": self.company_id
+            "company_id": self.company_id,
+            "company": {
+                "id": self.company.id,
+                "name": self.company.name
+            } if self.company else None
         }
 
 
@@ -146,7 +248,23 @@ class Schedules(db.Model):
             "route_id": self.route_id,
             "bus_id": self.bus_id,
             "price": self.price,
-            "available_seats": self.available_seats
+            "available_seats": self.available_seats,
+            "bus": {
+                "id": self.bus.id,
+                "bus_number": self.bus.bus_number,
+                "seating_capacity": self.bus.seating_capacity,
+                "company": {
+                    "id": self.bus.company.id,
+                    "name": self.bus.company.name,
+                    "description": self.bus.company.description
+                }
+            } if self.bus else None,
+            "route": {
+                "id": self.route.id,
+                "origin": self.route.origin,
+                "destination": self.route.destination,
+                "distance": self.route.distance
+            } if self.route else None
         }
 
 
@@ -155,6 +273,7 @@ class Bookings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(100), nullable=False, default='pending', index=True)
+    seat_number = db.Column(db.Integer, nullable=True)  # Seat number selected
     
     qr_code_reference = db.Column(db.String(100), nullable=True, unique=True, index=True)
     qr_code_reference_status = db.Column(db.String(20), nullable=False, default='unused', index=True)
@@ -224,7 +343,9 @@ class Bookings(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "booking_reference": self.qr_code_reference or f"UTK-{self.id}",
             "status": self.status,
+            "seat_number": self.seat_number,
             "qr_code_reference": self.qr_code_reference,
             "qr_code_status": self.qr_code_reference_status,
             "payment_link": self.payment_link,
@@ -233,7 +354,8 @@ class Bookings(db.Model):
             "user_id": self.user_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "cancelled_at": self.cancelled_at.isoformat() if self.cancelled_at else None,
-            "boarded_at": self.boarded_at.isoformat() if self.boarded_at else None
+            "boarded_at": self.boarded_at.isoformat() if self.boarded_at else None,
+            "schedule": self.schedule.to_dict() if self.schedule else None
         }
 
     def __repr__(self):

@@ -1,10 +1,12 @@
 from app import db
-from app.models import BusCompanies
+from app.models import BusCompanies, Users
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
-from flask import Blueprint, request, jsonify, abort
+from flask import Blueprint, request, jsonify, abort, current_app
 from ..utils.paychangu_payouts import get_available_banks
-from .auth import admin_required, company_or_admin_required
+from ..utils.email_services import send_password_reset_code_email
+from .auth import admin_required, company_or_admin_required, create_password_reset_code
+import threading
 
 
 companies_bp = Blueprint('companies', __name__)
@@ -23,7 +25,7 @@ def register_bus_company():
     contact_info = data.get('contact_info')
 
     # Contact details
-    phonne_numbers = data.get('phone_numbers')
+    phone_numbers = data.get('phone_numbers')
     email = data.get('email')
 
     # Bank account deatails for payouts
@@ -40,11 +42,12 @@ def register_bus_company():
     if all([bank_name, bank_account_number, bank_account_name]):
         abort(400, description='bank_name, bank_account_number, and bank_account_name are required in account_details')
     
-    if not all([phonne_numbers, email]):
-        abort(400, description='phone_numbers and email are required in contact_info')
+    if not phone_numbers:
+        abort(400, description='phone_numbers is required')
+    # email is optional
 
     contact_info = {
-        'phone_numbers': phonne_numbers,
+        'phone_numbers': phone_numbers,
         'email': email
     }
 
@@ -68,23 +71,50 @@ def register_bus_company():
             account_details['bank_uuid'] = supported_bank['uuid']
             bank_name = supported_bank['name']
     
+    # Create an associated user for the company (no public password)
+    # Expect admin to provide company contact phone and optional email
+    company_user = Users(
+        name=name,
+        email=email or f"company_{name.lower().replace(' ', '_')}@ulendo.local",  # generate placeholder if not provided
+        phone_number=phone_numbers[0] if isinstance(phone_numbers, list) and phone_numbers else (phone_numbers if isinstance(phone_numbers, str) else None),
+        role='company'
+    )
+    # set a temporary random password so account exists; company will use password reset link
+    import secrets
+    company_user.set_password(secrets.token_urlsafe(16))
+
     bus_company = BusCompanies(
         name=name, description=description,
-        contact_info=contact_info, account_details=account_details
+        contact_info=contact_info, account_details=account_details,
+        user=company_user
     )
 
     try:
+        db.session.add(company_user)
         db.session.add(bus_company)
         db.session.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.session.rollback()
+        current_app.logger.error('IntegrityError creating company: %s', e)
         abort(400, description='A company with this name or unique details already exists.')
     except Exception as e:
         db.session.rollback()
-        # abort(500, description='An unexpected error occurred during database operation.')
+        current_app.logger.exception('Error creating company')
         return jsonify({"message": "An unexpected error occurred during database operation.", "error": str(e)}), 500
-    
-    return jsonify({"message": "bus company created", "company": bus_company.to_dict()})
+
+    # Create a password reset code and email it to the company contact
+    # Use provided email if available, otherwise use placeholder (but won't send)
+    try:
+        contact_email = email or f"company_{name.lower().replace(' ', '_')}@ulendo.local"
+        code = create_password_reset_code(email=contact_email)
+        # send email in background (only if real email provided)
+        if email:
+            thread = threading.Thread(target=send_password_reset_code_email, args=(code, email))
+            thread.start()
+    except Exception as e:
+        current_app.logger.exception('Failed to create/send password reset code')
+
+    return jsonify({"message": "bus company created", "company": bus_company.to_dict()}), 201
 
 
 @companies_bp.route('/get', methods=["GET"])
@@ -171,3 +201,28 @@ def update_company_info(id: int):
         abort(500, description=str(e))
 
     return jsonify({"message": "company info updated", "company": company.to_dict()}), 200
+
+
+@companies_bp.route('/whoami', methods=["GET"])
+@company_or_admin_required
+def get_company_info():
+    """Get current user's company information."""
+    from flask_login import current_user
+    
+    if current_user.role.lower() == 'admin':
+        # For admin, return info about a specific company or the first company
+        company_id = request.args.get('company_id', type=int)
+        if company_id:
+            company = BusCompanies.query.filter_by(id=company_id).first()
+        else:
+            company = BusCompanies.query.first()
+        
+        if not company:
+            return jsonify({'error': 'No company found'}), 404
+    else:
+        # For company owner, get their company
+        company = BusCompanies.query.filter_by(owner_id=current_user.id).first()
+        if not company:
+            return jsonify({'error': 'Company not found'}), 404
+    
+    return jsonify({'company': company.to_dict()}), 200

@@ -7,18 +7,33 @@ import { HomePage } from './components/HomePage';
 import { SearchResults } from './components/SearchResults';
 import { BookingFlow } from './components/BookingFlow';
 import { UserDashboard } from './components/UserDashboard';
-import { CompanyDashboard } from './components/CompanyDashboard';
-import { AdminDashboard } from './components/AdminDashboard';
+
+// Fixed default imports
+import CompanyDashboard from './components/CompanyDashboard';
+import AdminDashboard from './components/AdminDashboard';
+import ConductorDashboard from './components/ConductorDashboard';
+import AccountsManagerDashboard from './components/AccountsManagerDashboard';
 
 function AppContent() {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState<'login' | 'register' | null>(null);
-  const [currentView, setCurrentView] = useState<'home' | 'search' | 'booking' | 'dashboard' | 'company' | 'admin'>('home');
+  const [currentView, setCurrentView] = useState<
+    'home' |
+    'search' |
+    'booking' |
+    'dashboard' |
+    'company' |
+    'admin' |
+    'conductor' |
+    'accounts_manager'
+  >('home');
+
   const [searchParams, setSearchParams] = useState({
     origin: '',
     destination: '',
     date: '',
   });
+
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
 
   // Handle browser navigation
@@ -27,6 +42,7 @@ function AppContent() {
       const path = window.location.pathname;
       if (path === '/admin') setCurrentView('admin');
       else if (path === '/company') setCurrentView('company');
+      else if (path === '/conductor') setCurrentView('conductor');
       else if (path === '/dashboard') setCurrentView('dashboard');
       else if (path.startsWith('/booking/')) setCurrentView('booking');
       else if (path === '/search') setCurrentView('search');
@@ -57,11 +73,10 @@ function AppContent() {
   // Auto-redirect based on user role when accessing dashboard
   useEffect(() => {
     if (user && currentView === 'dashboard') {
-      if (user.role === 'admin') {
-        navigateTo('admin', '/admin');
-      } else if (user.role === 'company') {
-        navigateTo('company', '/company');
-      }
+      if (user.role === 'admin') navigateTo('admin', '/admin');
+      else if (user.role === 'company') navigateTo('company', '/company');
+      else if (user.role === 'conductor') navigateTo('conductor', '/conductor');
+      else if (user.role === 'accounts_manager') navigateTo('accounts_manager', '/accounts_manager');
     }
   }, [user, currentView]);
 
@@ -71,7 +86,6 @@ function AppContent() {
       
       <main className="flex-1">
         {currentView === 'home' && <HomePage onSearch={handleSearch} />}
-
         {currentView === 'search' && (
           <SearchResults
             origin={searchParams.origin}
@@ -82,38 +96,29 @@ function AppContent() {
             onShowAuth={() => setShowAuth('login')}
           />
         )}
-
         {currentView === 'booking' && selectedScheduleId && (
           <BookingFlow
             scheduleId={selectedScheduleId}
             onBack={() => navigateTo('search', '/search')}
             onComplete={() => {
-              if (user?.role === 'admin') {
-                navigateTo('admin', '/admin');
-              } else if (user?.role === 'company') {
-                navigateTo('company', '/company');
-              } else {
-                navigateTo('dashboard', '/dashboard');
-              }
+              if (user?.role === 'admin') navigateTo('admin', '/admin');
+              else if (user?.role === 'company') navigateTo('company', '/company');
+              else if (user?.role === 'conductor') navigateTo('conductor', '/conductor');
+              else if (user?.role === 'accounts_manager') navigateTo('accounts_manager', '/accounts_manager');
+              else navigateTo('dashboard', '/dashboard');
             }}
           />
         )}
-
         {currentView === 'dashboard' && user && <UserDashboard />}
-        
         {currentView === 'company' && user && <CompanyDashboard />}
-        
         {currentView === 'admin' && user && <AdminDashboard />}
+        {currentView === 'conductor' && user && <ConductorDashboard />}
+        {currentView === 'accounts_manager' && user && <AccountsManagerDashboard />}
       </main>
 
       <Footer />
 
-      {showAuth && (
-        <AuthModal 
-          type={showAuth} 
-          onClose={() => setShowAuth(null)} 
-        />
-      )}
+      {showAuth && <AuthModal type={showAuth} onClose={() => setShowAuth(null)} />}
     </div>
   );
 }

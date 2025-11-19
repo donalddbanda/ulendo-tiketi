@@ -31,6 +31,27 @@ def get_user():
     return jsonify(user.to_dict())
 
 
+@users_bp.route('/list', methods=['GET'])
+@admin_required
+def list_users():
+    """List users for admin with optional filters"""
+    role = request.args.get('role', type=str)
+    q = request.args.get('q', type=str)
+
+    query = Users.query
+    if role:
+        query = query.filter(Users.role == role)
+    if q:
+        like = f"%{q}%"
+        query = query.filter((Users.name.ilike(like)) | (Users.email.ilike(like)) | (Users.phone_number.ilike(like)))
+
+    users = query.order_by(Users.created_at.desc()).all()
+    return jsonify({
+        'count': len(users),
+        'users': [u.to_dict() for u in users]
+    }), 200
+
+
 @users_bp.route('/update/<int:id>', methods=['PUT', 'POST'])
 @passenger_or_admin_required
 def update_user(id: int):

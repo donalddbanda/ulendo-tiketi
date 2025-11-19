@@ -19,48 +19,11 @@ export function UserDashboard() {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const userBookings = await apiService.getUserBookings();
-      
-      // Mock data for now
-      const mockBookings: Booking[] = [
-        {
-          id: '1',
-          booking_reference: 'UTK-AB12CD34',
-          seat_number: 12,
-          status: 'confirmed',
-          created_at: '2024-11-10T10:00:00Z',
-          passenger_name: user.full_name,
-          passenger_phone: '+265 991 234 567',
-          passenger_email: user.email,
-          schedule: {
-            id: '1',
-            departure_time: '2024-11-15T08:00:00Z',
-            arrival_time: '2024-11-15T14:00:00Z',
-            price: 15000,
-            available_seats: 20,
-            bus: {
-              bus_number: 'MBC-202',
-              bus_type: 'Executive',
-              amenities: ['WiFi', 'AC', 'Charging Ports'],
-              company: {
-                name: 'Malawi Bus Company',
-                logo_url: null
-              }
-            },
-            route: {
-              origin: 'Lilongwe',
-              destination: 'Blantyre',
-              distance_km: 350,
-              estimated_duration_minutes: 360
-            }
-          }
-        }
-      ];
-      
-      setBookings(mockBookings);
+      const userBookings = await apiService.getUserBookings();
+      setBookings(userBookings);
     } catch (error) {
       console.error('Failed to load bookings:', error);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -84,8 +47,7 @@ export function UserDashboard() {
     }
 
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // await apiService.cancelBooking(bookingId);
+      await apiService.cancelBooking(bookingId);
       setSelectedBooking(null);
       loadBookings(); // Reload bookings to reflect cancellation
     } catch (error) {
@@ -285,12 +247,12 @@ export function UserDashboard() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Company</span>
-                  <span className="font-semibold text-[#0A2239]">{selectedBooking.schedule.bus.company.name}</span>
+                  <span className="font-semibold text-[#0A2239]">{selectedBooking.schedule.bus?.company?.name || selectedBooking.schedule.bus.company.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Route</span>
                   <span className="font-semibold text-[#0A2239]">
-                    {selectedBooking.schedule.route.origin} → {selectedBooking.schedule.route.destination}
+                    {selectedBooking.schedule.route?.origin || selectedBooking.schedule.route.origin} → {selectedBooking.schedule.route?.destination || selectedBooking.schedule.route.destination}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -307,9 +269,32 @@ export function UserDashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Bus Number</span>
-                  <span className="font-semibold text-[#0A2239]">{selectedBooking.schedule.bus.bus_number}</span>
+                  <span className="font-semibold text-[#0A2239]">{selectedBooking.schedule.bus?.bus_number || selectedBooking.schedule.bus.bus_number}</span>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={async () => {
+                  try {
+                    const blob = await apiService.getQRCode(selectedBooking.id);
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ticket-${selectedBooking.booking_reference}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (err) {
+                    console.error('Failed to download QR code:', err);
+                  }
+                }}
+                className="w-full py-2 bg-[#0057A4] text-white rounded-lg font-medium hover:bg-[#0057A4]/90 transition-all"
+              >
+                Download QR Code
+              </button>
             </div>
 
             <p className="text-xs text-gray-500 text-center">

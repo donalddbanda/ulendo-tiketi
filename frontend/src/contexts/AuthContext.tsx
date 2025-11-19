@@ -47,19 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock admin user for testing - remove this when backend is ready
-    if (email === 'admin@ulendotiketi.mw' && password === 'admin123') {
-      const adminUser: User = {
-        id: 'admin-1',
-        email: 'admin@ulendotiketi.mw',
-        full_name: 'System Administrator',
-        role: 'admin',
-      };
-      setUser(adminUser);
-      localStorage.setItem('user_data', JSON.stringify(adminUser));
-      return;
-    }
-
     try {
       const resp = await apiService.login(email, password);
       // Backend may return { user: { ... } } or { user: { full_name } }
@@ -82,13 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName: string, role: 'passenger' | 'company', phone?: string) => {
     try {
-      const resp = await apiService.register({
-        email,
-        password,
-        full_name: fullName,
-        role,
-        phone,
-      });
+      const resp = await apiService.register(email, password, fullName, role, phone);
       const rawUser: any = resp?.user || resp;
       const normalized: User = {
         id: String(rawUser.id),

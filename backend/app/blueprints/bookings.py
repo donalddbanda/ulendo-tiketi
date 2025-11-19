@@ -17,6 +17,7 @@ def book_a_seat():
     data = request.get_json()
 
     schedule_id = data.get('schedule_id')
+    seat_number = data.get('seat_number')
 
     if not schedule_id:
         abort(400, description="Missing required booking information.")
@@ -32,6 +33,7 @@ def book_a_seat():
     booking = Bookings(
         schedule_id=schedule_id,
         user_id=current_user.id,
+        seat_number=seat_number,
         status='pending'
     )
     
@@ -40,6 +42,10 @@ def book_a_seat():
 
     try:
         db.session.add(booking)
+        db.session.commit()
+        
+        # Generate QR code reference
+        booking.generate_qr_reference()
         db.session.commit()
         
         # Create payment link after booking is saved
@@ -437,3 +443,72 @@ def check_qr_status(booking_id: int):
         'boarded_at': booking.boarded_at.isoformat() if booking.boarded_at else None
     }), 200
 
+
+@bookings_bp.route('/scan-qr', methods=["POST"])
+@login_required
+def scan_qr():
+    """Scan and validate a QR code for boarding."""
+    from app.models import Conductors, Employees
+    
+    # Verify user is a conductor or employee with conductor role
+    conductor = Conductors.query.filter_by(user_id=current_user.id).first()
+    employee = Employees.query.filter_by(user_id=current_user.id).first()
+    
+    if not conductor and not employee:
+        abort(403, description='Only conductors can scan QR codes')
+    
+    if employee and employee.employee_role != 'conductor':
+        abort(403, description='Only conductors can scan QR codes')
+
+    data = request.get_json()
+    qr_reference = data.get('qr_reference')
+    bus_id = data.get('bus_id')
+
+    if not qr_reference or not bus_id:
+        abort(400, description='QR reference and bus_id required')
+
+    # Find booking by QR reference
+    booking = Bookings.query.filter_by(qr_code_reference=qr_reference).first()
+    
+    if not booking:
+        return jsonify({
+            'success': False,
+            'message': 'Invalid QR code',
+            'booking_id': None
+        }), 404
+
+    # Verify booking is for the correct bus and schedule
+    if booking.schedule.bus_id != int(bus_id):
+        return jsonify({
+            'success': False,
+            'message': 'QR code not for this bus',
+            'booking_id': booking.id
+        }), 400
+
+    # Check if already boarded
+    if booking.qr_code_reference_status == 'used':
+        return jsonify({
+            'success': False,
+            'message': 'Ticket already used',
+            'booking_id': booking.id
+        }), 400
+
+    # Mark as boarded
+    booking.qr_code_reference_status = 'used'
+    booking.boarded_at = datetime.now(timezone.utc)
+    booking.status = 'confirmed'
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Ticket validated successfully',
+            'booking_id': booking.id,
+            'passenger_name': booking.user.full_name,
+            'seat_number': booking.seat_number,
+            'departure_time': booking.schedule.departure_time.isoformat(),
+            'route': f"{booking.schedule.route.origin} → {booking.schedule.route.destination}"
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500

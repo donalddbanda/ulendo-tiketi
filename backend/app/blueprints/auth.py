@@ -21,16 +21,21 @@ def register():
         abort(400, description='data not provided')
     
     name = data.get('full_name') or data.get('name')
-    email = data.get('email')
-    role = data.get('role', 'passenger')
+    email = data.get('email')  # optional
+    # Public registration only allowed for passengers. Admins create other roles.
+    role = 'passenger'
     password = data.get('password')
     phone_number = data.get('phone') or data.get('phone_number')
 
     if not all([name, phone_number, password]):
         abort(400, description='name, phone number, and password are required')
 
+    # Generate placeholder email if not provided
+    if not email:
+        email = f"user_{phone_number}@ulendo.local"
+
     # Check uniqueness of email/phone early to give friendly errors
-    if email and Users.query.filter_by(email=email).first():
+    if Users.query.filter_by(email=email).first():
         abort(400, description='An account with that email already exists')
     if Users.query.filter_by(phone_number=phone_number).first():
         abort(400, description='An account with that phone number already exists')
@@ -70,17 +75,20 @@ def login():
     
     data = request.get_json()
 
-    email = data.get('email')
-    phone_number = data.get('phone_number')
+    # Accept either email or phone as login identifier
+    login_identifier = data.get('email') or data.get('phone') or data.get('phone_number')
     password = data.get('password')
 
-    if not password and (not email and not phone_number):
-        abort(400, description='email or phone and password required')
+    if not password or not login_identifier:
+        abort(400, description='Email or phone number and password are required')
     
-    user = Users.query.filter_by(email=email).first() if email else Users.query.filter_by(phone_number=phone_number).first()
+    # Try to find user by email first, then by phone
+    user = Users.query.filter_by(email=login_identifier).first()
+    if not user:
+        user = Users.query.filter_by(phone_number=login_identifier).first()
 
     if not user:
-        abort(400, description='account not found')
+        abort(400, description='Account not found')
 
     if not user.verify_password(password):
         abort(400, description='Invalid login credentials')
@@ -91,7 +99,9 @@ def login():
         "message": "Login successful",
         "user": {
             "id": user.id,
-            "name": user.name,
+            "full_name": user.name,
+            "email": user.email,
+            "phone": user.phone_number,
             "role": user.role
         }
     })
@@ -168,7 +178,8 @@ def reset_password():
     
     code = data.get('code')
     new_password = data.get('new_password')
-    confirm_new__password = data.get('confirm_new__password')
+    # Accept both spellings to be forgiving: confirm_new__password (legacy) and confirm_new_password
+    confirm_new__password = data.get('confirm_new__password') or data.get('confirm_new_password')
     
     if not all([code, new_password, confirm_new__password]):
         abort(400, description='code, new password and password confirmation required')
