@@ -1,6 +1,9 @@
 import io
 import qrcode
+import logging
 from PIL import Image, ImageDraw, ImageFont
+
+logger = logging.getLogger(__name__)
 
 
 def generate_qr_code_image(qr_reference: str, booking_info: dict) -> io.BytesIO:
@@ -45,10 +48,14 @@ def generate_qr_code_image(qr_reference: str, booking_info: dict) -> io.BytesIO:
     draw = ImageDraw.Draw(final_img)
     
     # Try to use a better font, fallback to default
+    font_title = None
+    font_text = None
     try:
         font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
         font_text = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-    except:
+        logger.info("Successfully loaded TrueType fonts for QR code")
+    except Exception as e:
+        logger.warning(f"Could not load TrueType fonts, using default: {str(e)}")
         font_title = ImageFont.load_default()
         font_text = ImageFont.load_default()
     
@@ -115,6 +122,7 @@ def parse_qr_reference(qr_data: str) -> dict:
         }
         
     except Exception as e:
+        logger.error(f"Failed to parse QR code: {str(e)}")
         return {
             'valid': False,
             'error': f'Failed to parse QR code: {str(e)}'

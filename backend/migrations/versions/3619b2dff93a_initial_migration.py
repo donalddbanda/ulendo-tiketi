@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 6cdca80216ce
+Revision ID: 3619b2dff93a
 Revises: 
-Create Date: 2025-11-17 10:10:14.766054
+Create Date: 2025-11-20 06:20:41.481606
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '6cdca80216ce'
+revision = '3619b2dff93a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -112,6 +112,32 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_buses_company_id'), ['company_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_buses_conductor_id'), ['conductor_id'], unique=False)
 
+    op.create_table('employee_invitations',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('email', sa.String(length=120), nullable=False),
+    sa.Column('phone_number', sa.String(length=20), nullable=False),
+    sa.Column('role', sa.String(length=100), nullable=False),
+    sa.Column('company_id', sa.Integer(), nullable=False),
+    sa.Column('branch_id', sa.Integer(), nullable=True),
+    sa.Column('invited_by', sa.Integer(), nullable=False),
+    sa.Column('invitation_code', sa.String(length=100), nullable=False),
+    sa.Column('status', sa.String(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('expires_at', sa.DateTime(), nullable=False),
+    sa.Column('accepted_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
+    sa.ForeignKeyConstraint(['company_id'], ['bus_companies.id'], ),
+    sa.ForeignKeyConstraint(['invited_by'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('invitation_code')
+    )
+    with op.batch_alter_table('employee_invitations', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_employee_invitations_branch_id'), ['branch_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_employee_invitations_company_id'), ['company_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_employee_invitations_email'), ['email'], unique=False)
+        batch_op.create_index(batch_op.f('ix_employee_invitations_expires_at'), ['expires_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_employee_invitations_status'), ['status'], unique=False)
+
     op.create_table('payouts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
@@ -153,6 +179,7 @@ def upgrade():
     op.create_table('bookings',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('status', sa.String(length=100), nullable=False),
+    sa.Column('seat_number', sa.String(length=20), nullable=True),
     sa.Column('qr_code_reference', sa.String(length=100), nullable=True),
     sa.Column('qr_code_reference_status', sa.String(length=20), nullable=False),
     sa.Column('payment_link', sa.String(length=200), nullable=True),
@@ -171,6 +198,7 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_bookings_qr_code_reference'), ['qr_code_reference'], unique=True)
         batch_op.create_index(batch_op.f('ix_bookings_qr_code_reference_status'), ['qr_code_reference_status'], unique=False)
         batch_op.create_index(batch_op.f('ix_bookings_schedule_id'), ['schedule_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_bookings_seat_number'), ['seat_number'], unique=False)
         batch_op.create_index(batch_op.f('ix_bookings_status'), ['status'], unique=False)
         batch_op.create_index(batch_op.f('ix_bookings_tx_ref'), ['tx_ref'], unique=True)
         batch_op.create_index(batch_op.f('ix_bookings_user_id'), ['user_id'], unique=False)
@@ -212,6 +240,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_bookings_user_id'))
         batch_op.drop_index(batch_op.f('ix_bookings_tx_ref'))
         batch_op.drop_index(batch_op.f('ix_bookings_status'))
+        batch_op.drop_index(batch_op.f('ix_bookings_seat_number'))
         batch_op.drop_index(batch_op.f('ix_bookings_schedule_id'))
         batch_op.drop_index(batch_op.f('ix_bookings_qr_code_reference_status'))
         batch_op.drop_index(batch_op.f('ix_bookings_qr_code_reference'))
@@ -232,6 +261,14 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_payouts_company_id'))
 
     op.drop_table('payouts')
+    with op.batch_alter_table('employee_invitations', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_employee_invitations_status'))
+        batch_op.drop_index(batch_op.f('ix_employee_invitations_expires_at'))
+        batch_op.drop_index(batch_op.f('ix_employee_invitations_email'))
+        batch_op.drop_index(batch_op.f('ix_employee_invitations_company_id'))
+        batch_op.drop_index(batch_op.f('ix_employee_invitations_branch_id'))
+
+    op.drop_table('employee_invitations')
     with op.batch_alter_table('buses', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_buses_conductor_id'))
         batch_op.drop_index(batch_op.f('ix_buses_company_id'))

@@ -80,7 +80,7 @@ class DevelopmentConfig(BaseConfig):
     DEBUG = True
     TESTING = False
 
-    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URL', 'postgresql://postgres:password@localhost:5432/ulendo_tiketi_dev')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URL', 'sqlite:///ulendo.db')
 
     MAIL_SUPPRESS_SEND = True
     MAIL_DEBUG = True

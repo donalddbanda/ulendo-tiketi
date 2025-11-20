@@ -101,14 +101,12 @@ def register_bus_company():
     
     # Find matching bank UUID
     bank_uuid = None
-    matched_bank_name = bank_name
     
     for supported_bank in supported_banks.get('data', []):
         # Check if the provided bank name matches any supported bank
-        if bank_name[5].lower() in supported_bank['name'][5].lower() or \
-           supported_bank['name'][5].lower() in bank_name[5].lower():
+        if supported_bank.lower().startswith(bank_name[:7].lower()):
             bank_uuid = supported_bank['uuid']
-            matched_bank_name = supported_bank['name']
+            bank_name = supported_bank['name']
             break
     
     if not bank_uuid:
@@ -125,7 +123,7 @@ def register_bus_company():
     # Prepare account details
     account_details = {
         "bank_uuid": bank_uuid,
-        "bank_name": matched_bank_name,
+        "bank_name": bank_name,
         "account_type": bank_data.get('account_type', 'bank'),
         "account_number": account_number,
         "account_name": account_name

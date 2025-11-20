@@ -2,6 +2,7 @@ import os
 from flask import Flask, jsonify
 from app.config import get_config
 from .extensions import db, migrate, cors, mail, login
+from paychangu import PayChanguClient
 
 def create_app(config_name: str = None) -> Flask:
     """Application factory for Ulendo Tiketi API."""
@@ -14,6 +15,9 @@ def create_app(config_name: str = None) -> Flask:
 
     # Initialize extensions
     initialize_extensions(app)
+    
+    # Initialize PayChangu client
+    initialize_paychangu(app)
 
     # Register blueprints
     register_blueprints(app)
@@ -38,17 +42,31 @@ def create_app(config_name: str = None) -> Flask:
 def initialize_extensions(app: Flask):
     db.init_app(app)
     migrate.init_app(app, db)
-    cors.init_app(app,
-                  resources={
-                      r"/api/*": {
-                          "origins": app.config['CORS_ORIGINS'],
-                          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-                          "allow_headers": ["Content-Type", "Authorization"],
-                          "supports_credentials": True
-                      }
-                  })
+    cors.init_app(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": app.config['CORS_ORIGINS'],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True
+            }
+        }
+    )
     login.init_app(app)
     mail.init_app(app)
+
+
+def initialize_paychangu(app: Flask):
+    """Initialize PayChangu client with API key from config."""
+    from app import extensions
+    
+    api_key = app.config.get('PAYCHANGU_API_KEY')
+    if api_key:
+        extensions.paychangu_client = PayChanguClient(api_key)
+        app.logger.info("PayChangu client initialized successfully")
+    else:
+        app.logger.warning("PayChangu API key not found - payment functionality will not work")
 
 
 def register_blueprints(app: Flask):
@@ -64,8 +82,8 @@ def register_blueprints(app: Flask):
     from app.blueprints.payouts import payouts_bp
     from app.blueprints.banks import banks_bp
     from app.blueprints.branches import branches_bp
-    from app.blueprints.employees import employees_bp
     from app.blueprints.dashboard import dashboard_bp
+    from app.blueprints.employees import employees_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -78,19 +96,46 @@ def register_blueprints(app: Flask):
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(payouts_bp, url_prefix='/api/payouts')
     app.register_blueprint(banks_bp, url_prefix='/api/banks')
+    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(branches_bp, url_prefix='/api/branches')
     app.register_blueprint(employees_bp, url_prefix='/api/employees')
-    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
 
 
 def register_error_handlers(app: Flask):
+    @app.errorhandler(400)
+    def bad_request(e):
+        # Rollback any pending database transactions
+        db.session.rollback()
+        return jsonify({'error': 'Bad Request', 'message': str(e)}), 400
+    
+    @app.errorhandler(403)
+    def forbidden(e):
+        # Rollback any pending database transactions
+        db.session.rollback()
+        return jsonify({'error': 'Forbidden', 'message': str(e)}), 403
+    
     @app.errorhandler(404)
     def not_found(e):
+        # Rollback any pending database transactions
+        db.session.rollback()
         return jsonify({'error': 'Not Found', 'message': str(e)}), 404
 
     @app.errorhandler(500)
     def internal_error(e):
+        # Rollback any pending database transactions
+        db.session.rollback()
+        app.logger.error(f"Internal server error: {str(e)}")
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+    
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Catch any unhandled exceptions
+        db.session.rollback()
+        app.logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'An unexpected error occurred'
+        }), 500
 
 
 def create_directories(app: Flask):

@@ -70,7 +70,6 @@ def get_schedule(schedule_id: int):
 
 
 @schedules_bp.route('/company/schedules', methods=["GET"])
-@company_or_admin_required
 def get_company_schedules():
     """Get all schedules for the company's buses."""
     from app.models import Buses
@@ -104,7 +103,7 @@ def get_company_schedules():
 
 
 @schedules_bp.route('/<int:schedule_id>/cancel', methods=["POST"])
-@company_or_admin_required
+@schedule_manager_required
 def cancel_schedule(schedule_id: int):
     """Cancel a schedule."""
     from app.models import Buses, BusCompanies

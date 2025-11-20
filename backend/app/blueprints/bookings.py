@@ -22,7 +22,9 @@ def book_a_seat():
     if not schedule_id:
         abort(400, description="Missing required booking information.")
     
-    schedule = Schedules.query.filter_by(id=schedule_id).first()
+    
+    # Use with_for_update() to lock the schedule row during transaction
+    schedule = db.session.query(Schedules).filter_by(id=schedule_id).with_for_update().first()
     if not schedule:
         abort(400, description='invalid schedule_id')
 
@@ -251,11 +253,11 @@ def get_qr_code_data(booking_id: int):
     }), 200
 
 
-@bookings_bp.route('/verify-qr', methods=['POST'])
+@bookings_bp.route('/scan-qr', methods=['POST'])
 @conductor_required
-def verify_qr_code():
+def scan_qr_code():
     """
-    Verify QR code for boarding (terminal verification).
+    Scan QR code for boarding (terminal verification).
     This endpoint is used by bus company staff to scan and verify passenger tickets.
     
     Request body:
@@ -353,8 +355,8 @@ def verify_qr_code():
     }), 200
 
 
-@bookings_bp.route('/verify-reference', methods=['POST'])
-def verify_by_reference():
+@bookings_bp.route('/scan-reference', methods=['POST'])
+def scan_by_reference():
     """
     Verify booking using QR reference (alternative verification method).
     Useful when passenger doesn't have QR code on phone.
@@ -443,72 +445,3 @@ def check_qr_status(booking_id: int):
         'boarded_at': booking.boarded_at.isoformat() if booking.boarded_at else None
     }), 200
 
-
-@bookings_bp.route('/scan-qr', methods=["POST"])
-@conductor_required
-def scan_qr():
-    """Scan and validate a QR code for boarding."""
-    from app.models import Conductors, Employees
-    
-    # Verify user is a conductor or employee with conductor role
-    conductor = Conductors.query.filter_by(user_id=current_user.id).first()
-    employee = Employees.query.filter_by(user_id=current_user.id).first()
-    
-    if not conductor and not employee:
-        abort(403, description='Only conductors can scan QR codes')
-    
-    if employee and employee.employee_role != 'conductor':
-        abort(403, description='Only conductors can scan QR codes')
-
-    data = request.get_json()
-    qr_reference = data.get('qr_reference')
-    bus_id = data.get('bus_id')
-
-    if not qr_reference or not bus_id:
-        abort(400, description='QR reference and bus_id required')
-
-    # Find booking by QR reference
-    booking = Bookings.query.filter_by(qr_code_reference=qr_reference).first()
-    
-    if not booking:
-        return jsonify({
-            'success': False,
-            'message': 'Invalid QR code',
-            'booking_id': None
-        }), 404
-
-    # Verify booking is for the correct bus and schedule
-    if booking.schedule.bus_id != int(bus_id):
-        return jsonify({
-            'success': False,
-            'message': 'QR code not for this bus',
-            'booking_id': booking.id
-        }), 400
-
-    # Check if already boarded
-    if booking.qr_code_reference_status == 'used':
-        return jsonify({
-            'success': False,
-            'message': 'Ticket already used',
-            'booking_id': booking.id
-        }), 400
-
-    # Mark as boarded
-    booking.qr_code_reference_status = 'used'
-    booking.boarded_at = datetime.now(timezone.utc)
-    booking.status = 'confirmed'
-
-    try:
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Ticket validated successfully',
-            'booking_id': booking.id,
-            'passenger_name': booking.user.full_name,
-            'seat_number': booking.seat_number,
-            'departure_time': booking.schedule.departure_time.isoformat(),
-            'route': f"{booking.schedule.route.origin} → {booking.schedule.route.destination}"
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
