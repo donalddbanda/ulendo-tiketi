@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 3619b2dff93a
+Revision ID: 42e9e22fd6f7
 Revises: 
-Create Date: 2025-11-20 06:20:41.481606
+Create Date: 2025-11-21 23:27:44.301572
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '3619b2dff93a'
+revision = '42e9e22fd6f7'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -82,6 +82,7 @@ def upgrade():
     sa.Column('password_hash', sa.Text(), nullable=False),
     sa.Column('company_id', sa.Integer(), nullable=True),
     sa.Column('branch_id', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
     sa.ForeignKeyConstraint(['company_id'], ['bus_companies.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -91,6 +92,7 @@ def upgrade():
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_users_branch_id'), ['branch_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_users_company_id'), ['company_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_users_created_at'), ['created_at'], unique=False)
         batch_op.create_index(batch_op.f('ix_users_role'), ['role'], unique=False)
 
     op.create_table('buses',
@@ -174,6 +176,7 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_schedules_available_seats'), ['available_seats'], unique=False)
         batch_op.create_index(batch_op.f('ix_schedules_bus_id'), ['bus_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_schedules_departure_time'), ['departure_time'], unique=False)
+        batch_op.create_index('ix_schedules_route_departure', ['route_id', 'departure_time'], unique=False)
         batch_op.create_index(batch_op.f('ix_schedules_route_id'), ['route_id'], unique=False)
 
     op.create_table('bookings',
@@ -249,6 +252,7 @@ def downgrade():
     op.drop_table('bookings')
     with op.batch_alter_table('schedules', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_schedules_route_id'))
+        batch_op.drop_index('ix_schedules_route_departure')
         batch_op.drop_index(batch_op.f('ix_schedules_departure_time'))
         batch_op.drop_index(batch_op.f('ix_schedules_bus_id'))
         batch_op.drop_index(batch_op.f('ix_schedules_available_seats'))
@@ -278,6 +282,7 @@ def downgrade():
     op.drop_table('buses')
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_role'))
+        batch_op.drop_index(batch_op.f('ix_users_created_at'))
         batch_op.drop_index(batch_op.f('ix_users_company_id'))
         batch_op.drop_index(batch_op.f('ix_users_branch_id'))
 

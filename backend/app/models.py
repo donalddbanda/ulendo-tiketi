@@ -17,6 +17,7 @@ class Users(db.Model, UserMixin):
     password_hash = db.Column(db.Text, nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), index=True)
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc), index=True)
 
     bookings = db.relationship('Bookings', backref='user', lazy=True)
     companies_owned = db.relationship('BusCompanies', backref='owner', lazy=True, foreign_keys='BusCompanies.owner_id')
@@ -133,7 +134,7 @@ class Branches(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     company_id = db.Column(db.Integer, db.ForeignKey('bus_companies.id'), nullable=False, index=True)
-    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
 
     buses = db.relationship('Buses', backref='branch', lazy=True)
 
@@ -217,19 +218,9 @@ class Schedules(db.Model):
 
     bookings = db.relationship('Bookings', backref='schedule', lazy=True)
 
-    def __repr__(self):
-        return f"<Schedule {self.id} | {self.departure_time} to {self.arrival_time}>"
-    
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "departure_time": self.departure_time.isoformat(),
-            "arrival_time": self.arrival_time.isoformat(),
-            "route_id": self.route_id,
-            "bus_id": self.bus_id,
-            "price": self.price,
-            "available_seats": self.available_seats
-        }
+    __table_args__ = (
+        db.Index('ix_schedules_route_departure', 'route_id', 'departure_time'),
+    )
 
 
 class Bookings(db.Model):
@@ -400,7 +391,7 @@ class PasswordResetCode(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(minutes=10), index=True)
 
     def create_code(self):
-        self.code = random.randrange(100000, 999999)
+        self.code = str(random.randrange(100000, 999999))
     
     def is_code_valid(self):
         return datetime.now(timezone.utc) < self.expires_at

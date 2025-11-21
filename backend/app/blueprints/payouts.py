@@ -29,7 +29,7 @@ def request_payout():
         abort(400, description='Valid amount is required')
     
     # Determine company ID based on user role
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         company_id = current_user.id
     elif not company_id:
         abort(400, description='Company ID required for admin requests')
@@ -87,7 +87,7 @@ def list_payouts():
     query = Payouts.query
     
     # Apply filters based on role
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         query = query.filter_by(company_id=current_user.id)
     elif company_id:
         query = query.filter_by(company_id=company_id)
@@ -114,7 +114,7 @@ def get_payout(payout_id: int):
         abort(404, description='Payout not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company' and payout.company_id != current_user.id:
+    if current_user.role.lower() == 'company_owner' and payout.company_id != current_user.id:
         abort(403)
     
     return jsonify(payout.to_dict()), 200
@@ -217,7 +217,7 @@ def cancel_payout(payout_id: int):
         abort(404, description='Payout not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company' and payout.company_id != current_user.id:
+    if current_user.role.lower() == 'company_owner' and payout.company_id != current_user.id:
         abort(403)
     
     if payout.status != 'pending':
@@ -246,7 +246,7 @@ def get_balance():
     """
     Get company balance and payout summary.
     """
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = request.args.get('company_id', type=int)

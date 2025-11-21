@@ -33,9 +33,10 @@ class BaseConfig:
     # PayChangu Configuration
     PAYCHANGU_API_KEY = os.getenv('PAYCHANGU_API_KEY', '')
     PAYCHANGU_WEBHOOK_SECRET = os.getenv('PAYCHANGU_WEBHOOK_SECRET', '')
-    PAYCHANGU_CALLBACK_URL = os.getenv('PAYCHANGU_CALLBACK_URL', 'http://localhost:8000')
+    PAYCHANGU_CALLBACK_URL = os.getenv('PAYCHANGU_CALLBACK_URL', 'http://localhost:5000')
     PAYCHANGU_BASE_URL = os.getenv('PAYCHANGU_BASE_URL', 'https://api.paychangu.com/v1')
-    PAYCHANGU_MODE = os.getenv('PAYCHANGU_MODE', 'sandbox')  # 'sandbox' or 'live'
+    _paychangu_mode = os.getenv('PAYCHANGU_MODE', 'sandbox').lower()
+    PAYCHANGU_MODE = _paychangu_mode if _paychangu_mode in ['sandbox', 'live'] else 'sandbox'
 
     # Platform Settings
     PLATFORM_FEE = float(os.getenv('PLATFORM_FEE', '3000'))  # MWK 3000

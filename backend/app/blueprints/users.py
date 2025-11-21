@@ -7,6 +7,66 @@ from flask import Blueprint, request, jsonify, abort
 
 users_bp = Blueprint('users', __name__)
 
+@users_bp.route('/create', methods=['POST'])
+@admin_required
+def create_user():
+    """
+    Admin endpoint to create users with any role.
+    """
+    data = request.get_json()
+    if not data:
+        abort(400, description='Data not provided')
+    
+    name = data.get('full_name') or data.get('name')
+    email = data.get('email')
+    phone_number = data.get('phone') or data.get('phone_number')
+    role = data.get('role', 'passenger')
+    password = data.get('password')
+    company_id = data.get('company_id')
+    branch_id = data.get('branch_id')
+
+    if not all([name, phone_number, password, role]):
+        abort(400, description='name, phone number, password, and role are required')
+    
+    # Validate role
+    valid_roles = ['passenger', 'admin', 'company_owner', 'branch_manager', 
+                   'accounts_manager', 'bus_manager', 'schedule_manager', 'conductor']
+    if role not in valid_roles:
+        abort(400, description=f'Invalid role. Must be one of: {", ".join(valid_roles)}')
+
+    # Generate placeholder email if not provided
+    if not email:
+        email = f"user_{phone_number}@ulendo.local"
+
+    # Check uniqueness
+    if Users.query.filter_by(email=email).first():
+        abort(400, description='An account with that email already exists')
+    if Users.query.filter_by(phone_number=phone_number).first():
+        abort(400, description='An account with that phone number already exists')
+    
+    user = Users(
+        name=name, 
+        email=email, 
+        phone_number=phone_number, 
+        role=role,
+        company_id=company_id,
+        branch_id=branch_id
+    )
+    user.set_password(password)
+
+    try:
+        db.session.add(user)
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description='An unexpected error occurred')
+    
+    return jsonify({
+        "message": "User created successfully",
+        "user": user.to_dict()
+    }), 201
+
 @users_bp.route('/get/<int:id>', methods=["GET"])
 @admin_required
 def get_specific_user(id: int):

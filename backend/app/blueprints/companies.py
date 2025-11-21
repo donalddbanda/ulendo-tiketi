@@ -163,17 +163,27 @@ def register_bus_company():
         if data.get('create_default_branch', False):
             branch_name = data.get('default_branch_name', 'Main Branch')
             
-            default_branch = Branches(
+            # ADD THIS CHECK
+            existing_branch = Branches.query.filter_by(
                 name=branch_name,
-                company_id=bus_company.id,
-                manager_id=owner_user.id  # Owner manages the default branch initially
-            )
+                company_id=bus_company.id
+            ).first()
             
-            db.session.add(default_branch)
-            db.session.flush()
-            
-            # Update owner's branch_id
-            owner_user.branch_id = default_branch.id
+            if existing_branch:
+                # Use existing branch instead of creating a duplicate
+                default_branch = existing_branch
+                owner_user.branch_id = default_branch.id
+            else:
+                default_branch = Branches(
+                    name=branch_name,
+                    company_id=bus_company.id,
+                    manager_id=owner_user.id
+                )
+                
+                db.session.add(default_branch)
+                db.session.flush()
+                
+                owner_user.branch_id = default_branch.id
 
         # Commit all changes
         db.session.commit()

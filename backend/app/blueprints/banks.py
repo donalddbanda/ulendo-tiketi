@@ -2,7 +2,7 @@ from app import db
 from app.models import BusCompanies
 from flask import Blueprint, request, jsonify, abort
 from flask_login import current_user
-from .auth import company_owner_or_admin_required, admin_required
+from .auth import company_owner_or_admin_required
 from ..utils.paychangu_payouts import get_available_banks
 
 
@@ -84,7 +84,7 @@ def update_bank_account():
         abort(400, description='Data not provided')
     
     # Determine company ID
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = data.get('company_id')
@@ -149,7 +149,7 @@ def get_bank_account():
     Get company bank account details.
     """
     # Determine company ID
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = request.args.get('company_id', type=int)
@@ -200,7 +200,7 @@ def delete_bank_account():
         }), 400
     
     # Determine company ID
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = data.get('company_id')

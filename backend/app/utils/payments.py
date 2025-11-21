@@ -18,6 +18,13 @@ def create_payment_link(booking_id: int, amount: float, user_email: str = None, 
         dict: Contains checkout_url and tx_ref
     """
 
+    if paychangu_client is None:
+        current_app.logger.error("PayChangu client not initialized")
+        return {
+            'error': 'Payment system not configured. Please contact support.',
+            'status': 'failed'
+        }
+
     # Generate unique transaction reference
     tx_ref = f"BOOKING-{booking_id}-{int(datetime.now().timestamp() * 1000)}"
     
@@ -34,8 +41,8 @@ def create_payment_link(booking_id: int, amount: float, user_email: str = None, 
         email=user_email,
         first_name=user_name,
         last_name="N/A",
-        callback_url="http://127.0.0.1:5000/payments/callback",
-        return_url="https://example.com/return",
+        callback_url=callback_url,
+        return_url=return_url,
         customization={
             "title": "Bus Ticket Payment",
             "description": f"Payment for booking #{booking_id}"

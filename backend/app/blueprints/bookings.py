@@ -1,11 +1,11 @@
 from app import db
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from ..utils.payments import create_payment_link
 from app.models import Bookings, Schedules, Users
 from flask_login import current_user
 from flask import Blueprint, request, jsonify, abort, send_file
 from ..utils.qr_generator import generate_qr_code_image, parse_qr_reference
-from .auth import passenger_required, passenger_or_admin_required, conductor_required
+from .auth import passenger_required, passenger_or_admin_required, conductor_required, admin_required
 
 
 bookings_bp = Blueprint('bookings', __name__)
@@ -22,7 +22,6 @@ def book_a_seat():
     if not schedule_id:
         abort(400, description="Missing required booking information.")
     
-    
     # Use with_for_update() to lock the schedule row during transaction
     schedule = db.session.query(Schedules).filter_by(id=schedule_id).with_for_update().first()
     if not schedule:
@@ -30,6 +29,22 @@ def book_a_seat():
 
     if schedule.available_seats <= 0:
         abort(400, description="No available seats for this schedule.")
+
+    # Check for existing pending bookings by this user for this schedule
+    existing_pending = Bookings.query.filter_by(
+        user_id=current_user.id,
+        schedule_id=schedule_id,
+        status='pending'
+    ).first()
+    
+    if existing_pending:
+        # Return the existing payment link instead of creating a new booking
+        return jsonify({
+            "message": "You already have a pending booking for this schedule",
+            "booking": existing_pending.to_dict(),
+            "payment_link": existing_pending.payment_link,
+            "tx_ref": existing_pending.tx_ref
+        }), 200
 
     # Create booking with pending status
     booking = Bookings(
@@ -80,6 +95,37 @@ def book_a_seat():
                 "details": payment_result.get('error')
             }), 500
             
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@bookings_bp.route('/cleanup-abandoned', methods=['POST'])
+@admin_required
+def cleanup_abandoned_bookings():
+    """
+    Admin endpoint to clean up abandoned pending bookings.
+    Bookings pending for more than 1 hour are cancelled and seats restored.
+    """
+    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
+    
+    abandoned_bookings = Bookings.query.filter(
+        Bookings.status == 'pending',
+        Bookings.created_at < cutoff_time
+    ).all()
+    
+    count = 0
+    for booking in abandoned_bookings:
+        booking.status = 'cancelled'
+        booking.schedule.available_seats += 1
+        count += 1
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "message": f"Cleaned up {count} abandoned bookings",
+            "count": count
+        }), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
@@ -294,7 +340,7 @@ def scan_qr_code():
         }), 404
     
     # Check company authorization
-    if current_user.role.lower() == 'company':
+    if current_user.role.lower() == 'company_owner':
         if booking.schedule.bus.company_id != current_user.id:
             abort(403, description='Unauthorized: This booking is not for your company')
     

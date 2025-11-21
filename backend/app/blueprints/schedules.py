@@ -25,10 +25,18 @@ def schedule_bus():
         abort(400, description='Required data is missing')
 
     try:
-        departure_time = datetime.strptime(departure_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
-        arrival_time = datetime.strptime(arrival_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
-    except ValueError:
-        return jsonify({"message": "Date and time must be YYYY,MM,DD,HH,MM,SS"}), 400
+        # Support both comma-separated and ISO format
+        try:
+            departure_time = datetime.strptime(departure_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
+            arrival_time = datetime.strptime(arrival_time, '%Y,%m,%d,%H,%M,%S').replace(tzinfo=timezone.utc)
+        except ValueError:
+            # Try ISO format
+            departure_time = datetime.fromisoformat(departure_time.replace('Z', '+00:00'))
+            arrival_time = datetime.fromisoformat(arrival_time.replace('Z', '+00:00'))
+    except ValueError as e:
+        return jsonify({
+            "message": "Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS) or comma-separated (YYYY,MM,DD,HH,MM,SS)"
+        }), 400
 
     schedule = Schedules(
         departure_time=departure_time,

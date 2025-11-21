@@ -56,8 +56,14 @@ def generate_qr_code_image(qr_reference: str, booking_info: dict) -> io.BytesIO:
         logger.info("Successfully loaded TrueType fonts for QR code")
     except Exception as e:
         logger.warning(f"Could not load TrueType fonts, using default: {str(e)}")
-        font_title = ImageFont.load_default()
-        font_text = ImageFont.load_default()
+        # Use default font with size parameter for Pillow 10+
+        try:
+            font_title = ImageFont.load_default(size=16)  # CHANGE THIS
+            font_text = ImageFont.load_default(size=12)   # CHANGE THIS
+        except TypeError:
+            # Fallback for older Pillow versions
+            font_title = ImageFont.load_default()
+            font_text = ImageFont.load_default()
     
     # Add text
     y_offset = height + 10
