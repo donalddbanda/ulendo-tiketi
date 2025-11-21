@@ -19,8 +19,8 @@ class Users(db.Model, UserMixin):
     branch_id = db.Column(db.Integer, db.ForeignKey('branches.id'), index=True)
 
     bookings = db.relationship('Bookings', backref='user', lazy=True)
-    companies_owned = db.relationship('BusCompanies', backref='owner', lazy=True)
-    managed_branches = db.relationship('Branches', backref='manager', lazy=True)
+    companies_owned = db.relationship('BusCompanies', backref='owner', lazy=True, foreign_keys='BusCompanies.owner_id')
+    managed_branches = db.relationship('Branches', backref='manager', lazy=True, foreign_keys='Branches.manager_id')
     assigned_buses = db.relationship('Buses', backref='conductor', lazy=True)
 
     def set_password(self, password):

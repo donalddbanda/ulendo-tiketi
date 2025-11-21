@@ -1,12 +1,10 @@
 from app import db
-from datetime import datetime, timezone, timedelta
 from sqlalchemy import func, and_, or_
-from app.models import (Users, BusCompanies, Branches, Buses, Routes, 
-                        Schedules, Bookings, Transactions, Payouts)
-from flask import Blueprint, request, jsonify, abort, current_app
+from datetime import datetime, timezone, timedelta
 from flask_login import current_user, login_required
-from .auth import (admin_required, company_owner_or_admin_required, 
-                   branch_manager_required)
+from flask import Blueprint, request, jsonify, abort, current_app
+from .auth import admin_required, company_owner_or_admin_required, branch_manager_required, passenger_required
+from app.models import Users, BusCompanies, Branches, Buses, Routes, Schedules, Bookings, Transactions, Payouts
 
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -18,12 +16,12 @@ def admin_dashboard():
     """
     Admin dashboard with system-wide statistics.
     Shows overall platform metrics.
-    
+
     Query parameters:
     - period: today, week, month, year, all (default: all)
     """
     period = request.args.get('period', 'all')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'today':
@@ -36,11 +34,11 @@ def admin_dashboard():
         start_date = now - timedelta(days=365)
     else:
         start_date = None
-    
+
     # Build date filter
     date_filter = Bookings.created_at >= start_date if start_date else True
     transaction_date_filter = Transactions.created_at >= start_date if start_date else True
-    
+
     # Total statistics
     total_stats = {
         'companies': {
@@ -64,7 +62,7 @@ def admin_dashboard():
             'past': Schedules.query.filter(Schedules.departure_time <= now).count()
         }
     }
-    
+
     # Booking statistics
     booking_query = Bookings.query.filter(date_filter)
     booking_stats = {
@@ -74,31 +72,31 @@ def admin_dashboard():
         'cancelled': booking_query.filter_by(status='cancelled').count(),
         'boarded': booking_query.filter_by(status='boarded').count()
     }
-    
+
     # Financial statistics
     platform_fee = current_app.config.get('PLATFORM_FEE', 3000)
-    
+
     # Total revenue (completed transactions)
     total_revenue = db.session.query(func.sum(Transactions.amount)).filter(
         Transactions.status == 'completed',
         transaction_date_filter
     ).scalar() or 0
-    
+
     # Platform earnings (fees from bookings)
     confirmed_bookings = booking_query.filter_by(status='confirmed').count()
     boarded_bookings = booking_query.filter_by(status='boarded').count()
     platform_earnings = (confirmed_bookings + boarded_bookings) * platform_fee
-    
+
     # Total paid out to companies
     total_payouts = db.session.query(func.sum(Payouts.amount)).filter(
         Payouts.status == 'completed'
     ).scalar() or 0
-    
+
     # Pending payouts
     pending_payouts = db.session.query(func.sum(Payouts.amount)).filter(
         Payouts.status == 'pending'
     ).scalar() or 0
-    
+
     financial_stats = {
         'total_revenue': total_revenue,
         'platform_earnings': platform_earnings,
@@ -106,7 +104,12 @@ def admin_dashboard():
         'pending_payouts': pending_payouts,
         'company_balance': total_revenue - platform_earnings - total_payouts
     }
-    
+
+    # Pending company registrations
+    pending_company_registrations = BusCompanies.query.filter_by(status='pending').all()
+
+    unapproved_companies = [bus_company.to_dict() for bus_company in pending_company_registrations]
+
     # Top performing companies (by bookings)
     top_companies = db.session.query(
         BusCompanies.id,
@@ -127,14 +130,14 @@ def admin_dashboard():
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(10).all()
-    
+
     top_companies_data = [{
         'company_id': comp.id,
         'company_name': comp.name,
         'booking_count': comp.booking_count,
         'total_revenue': float(comp.total_revenue) if comp.total_revenue else 0
     } for comp in top_companies]
-    
+
     # Most popular routes
     popular_routes = db.session.query(
         Routes.id,
@@ -153,21 +156,22 @@ def admin_dashboard():
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(10).all()
-    
+
     popular_routes_data = [{
         'route_id': route.id,
         'origin': route.origin,
         'destination': route.destination,
         'booking_count': route.booking_count
     } for route in popular_routes]
-    
+
     return jsonify({
         'period': period,
         'total_stats': total_stats,
         'bookings': booking_stats,
         'financial': financial_stats,
         'top_companies': top_companies_data,
-        'popular_routes': popular_routes_data
+        'popular_routes': popular_routes_data,
+        'unapproved_companies': unapproved_companies
     }), 200
 
 
@@ -178,7 +182,7 @@ def company_dashboard():
     Company dashboard with company-specific metrics.
     Company owners see their company data.
     Admins can view any company (requires company_id parameter).
-    
+
     Query parameters:
     - company_id: Company ID (required for admins)
     - period: today, week, month, year, all (default: month)
@@ -192,14 +196,14 @@ def company_dashboard():
         company_id = request.args.get('company_id', type=int)
         if not company_id:
             abort(400, description='company_id parameter required for admins')
-    
+
     # Verify company exists
     company = BusCompanies.query.filter_by(id=company_id).first()
     if not company:
         abort(404, description='Company not found')
-    
+
     period = request.args.get('period', 'month')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'today':
@@ -212,9 +216,9 @@ def company_dashboard():
         start_date = now - timedelta(days=365)
     else:
         start_date = None
-    
+
     date_filter = Bookings.created_at >= start_date if start_date else True
-    
+
     # Company overview
     company_overview = {
         'id': company.id,
@@ -225,7 +229,7 @@ def company_dashboard():
         'total_buses': Buses.query.filter_by(company_id=company_id).count(),
         'total_employees': Users.query.filter_by(company_id=company_id).count()
     }
-    
+
     # Employee breakdown
     employee_stats = {
         'company_owners': Users.query.filter_by(company_id=company_id, role='company_owner').count(),
@@ -235,7 +239,7 @@ def company_dashboard():
         'schedule_managers': Users.query.filter_by(company_id=company_id, role='schedule_manager').count(),
         'conductors': Users.query.filter_by(company_id=company_id, role='conductor').count()
     }
-    
+
     # Booking statistics
     booking_query = db.session.query(Bookings).join(
         Schedules, Bookings.schedule_id == Schedules.id
@@ -245,7 +249,7 @@ def company_dashboard():
         Buses.company_id == company_id,
         date_filter
     )
-    
+
     booking_stats = {
         'total': booking_query.count(),
         'confirmed': booking_query.filter(Bookings.status == 'confirmed').count(),
@@ -253,10 +257,10 @@ def company_dashboard():
         'cancelled': booking_query.filter(Bookings.status == 'cancelled').count(),
         'boarded': booking_query.filter(Bookings.status == 'boarded').count()
     }
-    
+
     # Revenue statistics
     platform_fee = current_app.config.get('PLATFORM_FEE', 3000)
-    
+
     total_revenue = db.session.query(func.sum(Schedules.price)).join(
         Bookings, Schedules.id == Bookings.schedule_id
     ).join(
@@ -266,21 +270,21 @@ def company_dashboard():
         Bookings.status.in_(['confirmed', 'boarded']),
         date_filter
     ).scalar() or 0
-    
+
     confirmed_bookings = booking_query.filter(
         Bookings.status.in_(['confirmed', 'boarded'])
     ).count()
-    
+
     platform_fees = confirmed_bookings * platform_fee
     net_revenue = total_revenue - platform_fees
-    
+
     revenue_stats = {
         'gross_revenue': total_revenue,
         'platform_fees': platform_fees,
         'net_revenue': net_revenue,
         'current_balance': company.balance
     }
-    
+
     # Payout statistics
     payout_stats = {
         'total_requested': db.session.query(func.sum(Payouts.amount)).filter(
@@ -298,7 +302,7 @@ def company_dashboard():
             Payouts.requested_at.desc()
         ).limit(5).all()
     }
-    
+
     # Branch performance
     branch_performance = db.session.query(
         Branches.id,
@@ -320,14 +324,14 @@ def company_dashboard():
     ).order_by(
         func.count(Bookings.id).desc()
     ).all()
-    
+
     branch_performance_data = [{
         'branch_id': branch.id,
         'branch_name': branch.name,
         'booking_count': branch.booking_count,
         'revenue': float(branch.revenue) if branch.revenue else 0
     } for branch in branch_performance]
-    
+
     # Most active routes for this company
     company_routes = db.session.query(
         Routes.id,
@@ -349,14 +353,14 @@ def company_dashboard():
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(10).all()
-    
+
     routes_data = [{
         'route_id': route.id,
         'origin': route.origin,
         'destination': route.destination,
         'booking_count': route.booking_count
     } for route in company_routes]
-    
+
     return jsonify({
         'period': period,
         'company': company_overview,
@@ -381,14 +385,14 @@ def branch_dashboard(branch_id: int):
     Branch-specific dashboard with metrics.
     Branch managers can view their branch.
     Company owners can view any branch in their company.
-    
+
     Query parameters:
     - period: today, week, month, year, all (default: month)
     """
     branch = Branches.query.filter_by(id=branch_id).first()
     if not branch:
         abort(404, description='Branch not found')
-    
+
     # Authorization check
     if current_user.role.lower() == 'company_owner':
         if branch.company_id != current_user.company_id:
@@ -396,9 +400,9 @@ def branch_dashboard(branch_id: int):
     elif current_user.role.lower() == 'branch_manager':
         if current_user.branch_id != branch_id:
             abort(403, description='You can only view your own branch')
-    
+
     period = request.args.get('period', 'month')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'today':
@@ -411,9 +415,9 @@ def branch_dashboard(branch_id: int):
         start_date = now - timedelta(days=365)
     else:
         start_date = None
-    
+
     date_filter = Bookings.created_at >= start_date if start_date else True
-    
+
     # Branch overview
     company = BusCompanies.query.filter_by(id=branch.company_id).first()
     branch_overview = {
@@ -426,7 +430,7 @@ def branch_dashboard(branch_id: int):
         'total_buses': Buses.query.filter_by(branch_id=branch_id).count(),
         'total_employees': Users.query.filter_by(branch_id=branch_id).count()
     }
-    
+
     # Employee breakdown
     employee_stats = {
         'branch_manager': Users.query.filter_by(branch_id=branch_id, role='branch_manager').count(),
@@ -435,7 +439,7 @@ def branch_dashboard(branch_id: int):
         'schedule_managers': Users.query.filter_by(branch_id=branch_id, role='schedule_manager').count(),
         'conductors': Users.query.filter_by(branch_id=branch_id, role='conductor').count()
     }
-    
+
     # Bus statistics
     buses = Buses.query.filter_by(branch_id=branch_id).all()
     bus_stats = {
@@ -444,7 +448,7 @@ def branch_dashboard(branch_id: int):
         'without_conductor': sum(1 for bus in buses if not bus.conductor_id),
         'total_capacity': sum(bus.seating_capacity for bus in buses)
     }
-    
+
     # Booking statistics
     booking_query = db.session.query(Bookings).join(
         Schedules, Bookings.schedule_id == Schedules.id
@@ -454,7 +458,7 @@ def branch_dashboard(branch_id: int):
         Buses.branch_id == branch_id,
         date_filter
     )
-    
+
     booking_stats = {
         'total': booking_query.count(),
         'confirmed': booking_query.filter(Bookings.status == 'confirmed').count(),
@@ -462,10 +466,10 @@ def branch_dashboard(branch_id: int):
         'cancelled': booking_query.filter(Bookings.status == 'cancelled').count(),
         'boarded': booking_query.filter(Bookings.status == 'boarded').count()
     }
-    
+
     # Revenue statistics
     platform_fee = current_app.config.get('PLATFORM_FEE', 3000)
-    
+
     total_revenue = db.session.query(func.sum(Schedules.price)).join(
         Bookings, Schedules.id == Bookings.schedule_id
     ).join(
@@ -475,20 +479,20 @@ def branch_dashboard(branch_id: int):
         Bookings.status.in_(['confirmed', 'boarded']),
         date_filter
     ).scalar() or 0
-    
+
     confirmed_bookings = booking_query.filter(
         Bookings.status.in_(['confirmed', 'boarded'])
     ).count()
-    
+
     platform_fees = confirmed_bookings * platform_fee
     net_revenue = total_revenue - platform_fees
-    
+
     revenue_stats = {
         'gross_revenue': total_revenue,
         'platform_fees': platform_fees,
         'net_revenue': net_revenue
     }
-    
+
     # Top performing buses
     bus_performance = db.session.query(
         Buses.id,
@@ -509,7 +513,7 @@ def branch_dashboard(branch_id: int):
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(10).all()
-    
+
     bus_performance_data = [{
         'bus_id': bus.id,
         'bus_number': bus.bus_number,
@@ -517,7 +521,7 @@ def branch_dashboard(branch_id: int):
         'booking_count': bus.booking_count,
         'revenue': float(bus.revenue) if bus.revenue else 0
     } for bus in bus_performance]
-    
+
     # Conductor performance
     conductor_performance = db.session.query(
         Users.id,
@@ -538,13 +542,13 @@ def branch_dashboard(branch_id: int):
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(10).all()
-    
+
     conductor_performance_data = [{
         'conductor_id': conductor.id,
         'conductor_name': conductor.name,
         'tickets_scanned': conductor.tickets_scanned
     } for conductor in conductor_performance]
-    
+
     return jsonify({
         'period': period,
         'branch': branch_overview,
@@ -564,17 +568,17 @@ def conductor_dashboard(conductor_id: int):
     Conductor-specific dashboard showing their performance.
     Conductors can view their own stats.
     Branch managers and company owners can view conductors in their scope.
-    
+
     Query parameters:
     - period: today, week, month, year, all (default: month)
     """
+    if current_user.role.lower() not in ['company_owner', 'conductor', 'branch manager']:
+        abort(403, description="Role denied")
+
     conductor = Users.query.filter_by(id=conductor_id).first()
     if not conductor:
         abort(404, description='Conductor not found')
-    
-    if conductor.role.lower() != 'conductor':
-        abort(400, description='User is not a conductor')
-    
+
     # Authorization check
     if current_user.role.lower() == 'conductor':
         if current_user.id != conductor_id:
@@ -585,11 +589,9 @@ def conductor_dashboard(conductor_id: int):
     elif current_user.role.lower() == 'branch_manager':
         if conductor.branch_id != current_user.branch_id:
             abort(403, description='Conductor must be in your branch')
-    elif current_user.role.lower() != 'admin':
-        abort(403)
-    
+
     period = request.args.get('period', 'month')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'today':
@@ -602,14 +604,14 @@ def conductor_dashboard(conductor_id: int):
         start_date = now - timedelta(days=365)
     else:
         start_date = None
-    
+
     date_filter = Bookings.boarded_at >= start_date if start_date else True
-    
+
     # Conductor overview
     assigned_bus = Buses.query.filter_by(conductor_id=conductor_id).first()
     branch = Branches.query.filter_by(id=conductor.branch_id).first()
     company = BusCompanies.query.filter_by(id=conductor.company_id).first()
-    
+
     conductor_overview = {
         'id': conductor.id,
         'name': conductor.name,
@@ -630,7 +632,7 @@ def conductor_dashboard(conductor_id: int):
             'name': company.name
         } if company else None
     }
-    
+
     # Performance statistics
     if assigned_bus:
         tickets_scanned = db.session.query(func.count(Bookings.id)).join(
@@ -640,13 +642,13 @@ def conductor_dashboard(conductor_id: int):
             Bookings.status == 'boarded',
             date_filter
         ).scalar() or 0
-        
+
         total_trips = db.session.query(func.count(Schedules.id)).filter(
             Schedules.bus_id == assigned_bus.id,
             Schedules.departure_time >= (start_date if start_date else datetime.min),
             Schedules.departure_time <= now
         ).scalar() or 0
-        
+
         # Revenue generated
         revenue_generated = db.session.query(func.sum(Schedules.price)).join(
             Bookings, Schedules.id == Bookings.schedule_id
@@ -659,14 +661,14 @@ def conductor_dashboard(conductor_id: int):
         tickets_scanned = 0
         total_trips = 0
         revenue_generated = 0
-    
+
     performance_stats = {
         'tickets_scanned': tickets_scanned,
         'total_trips': total_trips,
         'revenue_generated': revenue_generated,
         'average_per_trip': revenue_generated / total_trips if total_trips > 0 else 0
     }
-    
+
     # Recent scanned tickets
     if assigned_bus:
         recent_scans = db.session.query(Bookings).join(
@@ -679,7 +681,7 @@ def conductor_dashboard(conductor_id: int):
         ).order_by(
             Bookings.boarded_at.desc()
         ).limit(10).all()
-        
+
         recent_scans_data = [{
             'booking_id': booking.id,
             'qr_reference': booking.qr_code_reference,
@@ -689,7 +691,7 @@ def conductor_dashboard(conductor_id: int):
         } for booking in recent_scans]
     else:
         recent_scans_data = []
-    
+
     return jsonify({
         'period': period,
         'conductor': conductor_overview,
@@ -699,14 +701,12 @@ def conductor_dashboard(conductor_id: int):
 
 
 @dashboard_bp.route('/passenger', methods=['GET'])
-@login_required
+@passenger_required
 def passenger_dashboard():
     """
     Passenger dashboard showing their booking history and statistics.
     """
-    if current_user.role.lower() != 'passenger':
-        abort(403, description='This endpoint is for passengers only')
-    
+
     # Booking statistics
     total_bookings = Bookings.query.filter_by(user_id=current_user.id).count()
     confirmed_bookings = Bookings.query.filter_by(
@@ -721,7 +721,7 @@ def passenger_dashboard():
         user_id=current_user.id,
         status='cancelled'
     ).count()
-    
+
     booking_stats = {
         'total': total_bookings,
         'confirmed': confirmed_bookings,
@@ -732,7 +732,7 @@ def passenger_dashboard():
             status='pending'
         ).count()
     }
-    
+
     # Spending statistics
     total_spent = db.session.query(func.sum(Schedules.price)).join(
         Bookings, Schedules.id == Bookings.schedule_id
@@ -740,12 +740,12 @@ def passenger_dashboard():
         Bookings.user_id == current_user.id,
         Bookings.status.in_(['confirmed', 'boarded'])
     ).scalar() or 0
-    
+
     spending_stats = {
         'total_spent': total_spent,
         'average_per_trip': total_spent / completed_bookings if completed_bookings > 0 else 0
     }
-    
+
     # Favorite routes
     favorite_routes = db.session.query(
         Routes.id,
@@ -764,14 +764,14 @@ def passenger_dashboard():
     ).order_by(
         func.count(Bookings.id).desc()
     ).limit(5).all()
-    
+
     favorite_routes_data = [{
         'route_id': route.id,
         'origin': route.origin,
         'destination': route.destination,
         'trip_count': route.trip_count
     } for route in favorite_routes]
-    
+
     # Upcoming trips
     now = datetime.now(timezone.utc)
     upcoming_trips = db.session.query(Bookings).join(
@@ -789,7 +789,7 @@ def passenger_dashboard():
     ).order_by(
         Schedules.departure_time.asc()
     ).limit(5).all()
-    
+
     upcoming_trips_data = [{
         'booking_id': booking.id,
         'qr_reference': booking.qr_code_reference,
@@ -800,7 +800,7 @@ def passenger_dashboard():
         'company': booking.schedule.bus.company.name,
         'price': booking.schedule.price
     } for booking in upcoming_trips]
-    
+
     # Recent trips
     recent_trips = db.session.query(Bookings).join(
         Schedules, Bookings.schedule_id == Schedules.id
@@ -816,7 +816,7 @@ def passenger_dashboard():
     ).order_by(
         Bookings.boarded_at.desc()
     ).limit(5).all()
-    
+
     recent_trips_data = [{
         'booking_id': booking.id,
         'route': f"{booking.schedule.route.origin} to {booking.schedule.route.destination}",
@@ -826,7 +826,7 @@ def passenger_dashboard():
         'company': booking.schedule.bus.company.name,
         'price': booking.schedule.price
     } for booking in recent_trips]
-    
+
     return jsonify({
         'user': {
             'id': current_user.id,
@@ -850,7 +850,7 @@ def user_summary():
     Returns role-appropriate quick stats.
     """
     user_role = current_user.role.lower()
-    
+
     if user_role == 'admin':
         # Quick admin stats
         summary = {
@@ -862,13 +862,13 @@ def user_summary():
             ).count(),
             'total_users': Users.query.count()
         }
-    
+
     elif user_role == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
-        
+
         company = BusCompanies.query.filter_by(id=current_user.company_id).first()
-        
+
         # Today's bookings
         today_bookings = db.session.query(func.count(Bookings.id)).join(
             Schedules, Bookings.schedule_id == Schedules.id
@@ -878,7 +878,7 @@ def user_summary():
             Buses.company_id == current_user.company_id,
             Bookings.created_at >= datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
         ).scalar() or 0
-        
+
         summary = {
             'role': 'company_owner',
             'company_name': company.name if company else None,
@@ -892,13 +892,13 @@ def user_summary():
                 status='pending'
             ).count()
         }
-    
+
     elif user_role == 'branch_manager':
         if not current_user.branch_id:
             abort(400, description='Branch manager must be associated with a branch')
-        
+
         branch = Branches.query.filter_by(id=current_user.branch_id).first()
-        
+
         # Today's bookings
         today_bookings = db.session.query(func.count(Bookings.id)).join(
             Schedules, Bookings.schedule_id == Schedules.id
@@ -908,7 +908,7 @@ def user_summary():
             Buses.branch_id == current_user.branch_id,
             Bookings.created_at >= datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
         ).scalar() or 0
-        
+
         summary = {
             'role': 'branch_manager',
             'branch_name': branch.name if branch else None,
@@ -920,10 +920,10 @@ def user_summary():
                 Buses.conductor_id.is_(None)
             ).count()
         }
-    
+
     elif user_role == 'conductor':
         assigned_bus = Buses.query.filter_by(conductor_id=current_user.id).first()
-        
+
         # Today's scanned tickets
         today_scans = 0
         if assigned_bus:
@@ -934,7 +934,7 @@ def user_summary():
                 Bookings.status == 'boarded',
                 Bookings.boarded_at >= datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
             ).scalar() or 0
-        
+
         summary = {
             'role': 'conductor',
             'assigned_bus': {
@@ -944,7 +944,7 @@ def user_summary():
             } if assigned_bus else None,
             'tickets_scanned_today': today_scans
         }
-    
+
     elif user_role == 'passenger':
         summary = {
             'role': 'passenger',
@@ -962,7 +962,7 @@ def user_summary():
                 status='pending'
             ).count()
         }
-    
+
     else:
         # Other employee roles
         summary = {
@@ -970,7 +970,7 @@ def user_summary():
             'company_id': current_user.company_id,
             'branch_id': current_user.branch_id
         }
-    
+
     return jsonify({
         'user': {
             'id': current_user.id,
@@ -987,7 +987,7 @@ def revenue_chart():
     """
     Get revenue data for charting purposes.
     Returns daily/weekly/monthly revenue data.
-    
+
     Query parameters:
     - company_id: Company ID (required for admins)
     - period: week, month, year (default: month)
@@ -1002,15 +1002,15 @@ def revenue_chart():
         company_id = request.args.get('company_id', type=int)
         if not company_id:
             abort(400, description='company_id parameter required for admins')
-    
+
     # Verify company exists
     company = BusCompanies.query.filter_by(id=company_id).first()
     if not company:
         abort(404, description='Company not found')
-    
+
     period = request.args.get('period', 'month')
     group_by = request.args.get('group_by', 'day')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'week':
@@ -1021,7 +1021,7 @@ def revenue_chart():
         start_date = now - timedelta(days=365)
     else:
         start_date = now - timedelta(days=30)
-    
+
     # Query bookings with revenue
     bookings = db.session.query(
         Bookings.created_at,
@@ -1035,11 +1035,11 @@ def revenue_chart():
         Bookings.status.in_(['confirmed', 'boarded']),
         Bookings.created_at >= start_date
     ).all()
-    
+
     # Group data by period
     revenue_data = {}
     platform_fee = current_app.config.get('PLATFORM_FEE', 3000)
-    
+
     for booking in bookings:
         if group_by == 'day':
             key = booking.created_at.strftime('%Y-%m-%d')
@@ -1048,18 +1048,18 @@ def revenue_chart():
             key = booking.created_at.strftime('%Y-W%W')
         else:  # month
             key = booking.created_at.strftime('%Y-%m')
-        
+
         if key not in revenue_data:
             revenue_data[key] = {
                 'gross': 0,
                 'net': 0,
                 'bookings': 0
             }
-        
+
         revenue_data[key]['gross'] += booking.price
         revenue_data[key]['net'] += booking.price - platform_fee
         revenue_data[key]['bookings'] += 1
-    
+
     # Convert to sorted list
     chart_data = [
         {
@@ -1070,7 +1070,7 @@ def revenue_chart():
         }
         for key, data in sorted(revenue_data.items())
     ]
-    
+
     return jsonify({
         'company_id': company_id,
         'period': period,
@@ -1084,7 +1084,7 @@ def revenue_chart():
 def booking_trends():
     """
     Get booking trends over time for analysis.
-    
+
     Query parameters:
     - company_id: Company ID (required for admins)
     - period: week, month, year (default: month)
@@ -1096,9 +1096,9 @@ def booking_trends():
         company_id = current_user.company_id
     else:  # admin
         company_id = request.args.get('company_id', type=int)
-    
+
     period = request.args.get('period', 'month')
-    
+
     # Calculate date range
     now = datetime.now(timezone.utc)
     if period == 'week':
@@ -1109,7 +1109,7 @@ def booking_trends():
         start_date = now - timedelta(days=365)
     else:
         start_date = now - timedelta(days=30)
-    
+
     # Build base query
     if company_id:
         booking_query = db.session.query(Bookings).join(
@@ -1124,14 +1124,14 @@ def booking_trends():
         booking_query = db.session.query(Bookings).filter(
             Bookings.created_at >= start_date
         )
-    
+
     # Get bookings by status over time
     bookings_by_day = {}
     bookings = booking_query.all()
-    
+
     for booking in bookings:
         day_key = booking.created_at.strftime('%Y-%m-%d')
-        
+
         if day_key not in bookings_by_day:
             bookings_by_day[day_key] = {
                 'confirmed': 0,
@@ -1140,10 +1140,10 @@ def booking_trends():
                 'boarded': 0,
                 'total': 0
             }
-        
+
         bookings_by_day[day_key][booking.status] = bookings_by_day[day_key].get(booking.status, 0) + 1
         bookings_by_day[day_key]['total'] += 1
-    
+
     # Convert to sorted list
     trends_data = [
         {
@@ -1152,7 +1152,7 @@ def booking_trends():
         }
         for key, data in sorted(bookings_by_day.items())
     ]
-    
+
     return jsonify({
         'company_id': company_id,
         'period': period,
