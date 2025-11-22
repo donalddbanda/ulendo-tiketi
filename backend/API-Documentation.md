@@ -1,10 +1,10 @@
-## Ulendo Tiketi API documentation
+# Ulendo Tiketi API documentation
 
-### Authorization
+## Authorization
 *POST /api/auth/register*
+#### Register a new user
 ### Request body:
 ```
-json
 {
     "name": "John Doe",
     "email": "johndoe@example.com", [optional]
@@ -27,9 +27,9 @@ json
 ```
 
 *POST /api/auth/login*
+#### Login user
 ### Request body:
 ```
-json
 {
     <!-- pass email or phone or phone_number -->
     "email": "user@email.com",
@@ -55,4 +55,20 @@ json
 ```
 
 *POST /api/auth/logout*
+#### Logout out user
 ### No request and response bodies
+
+*GET /api/auth/whoami*
+#### REturn information about the currently authenticated user.
+### Response body:
+```
+{
+    'user': {
+        'id': user.id,
+        'full_name': user.name,
+        'email': user.email,
+        'phone': user.phone_number,
+        'role': user.role
+    }
+}
+```
