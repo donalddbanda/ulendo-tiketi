@@ -84,7 +84,7 @@ def update_bank_account():
         abort(400, description='Data not provided')
     
     # Determine company ID
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = data.get('company_id')
@@ -149,7 +149,7 @@ def get_bank_account():
     Get company bank account details.
     """
     # Determine company ID
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = request.args.get('company_id', type=int)
@@ -163,7 +163,7 @@ def get_bank_account():
     account_details = company.account_details or {}
     
     # Don't expose sensitive full account numbers to non-admins
-    if current_user.role.lower() != 'admin':
+    if current_user.role.lower().strip() != 'admin':
         account_number = account_details.get('account_number', '')
         if account_number and len(account_number) > 4:
             # Mask account number except last 4 digits
@@ -200,7 +200,7 @@ def delete_bank_account():
         }), 400
     
     # Determine company ID
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         company_id = current_user.id
     else:
         company_id = data.get('company_id')

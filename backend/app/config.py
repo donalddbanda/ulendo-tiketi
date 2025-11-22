@@ -8,9 +8,6 @@ load_dotenv()
 class BaseConfig:
     """Base configuration with common settings."""
 
-    # Date and time
-    DATE_AND_TIME_FORMAT = os.getenv('DATE_AND_TIME_FORMAT', '%Y,%m,%d,%H,%M,%S')
-
     # Flask
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 

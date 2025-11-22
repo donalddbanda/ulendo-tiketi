@@ -1,4 +1,4 @@
-import random
+import secrets
 from .extensions import db
 from .extensions import login
 from flask_login import UserMixin
@@ -209,8 +209,8 @@ class Schedules(db.Model):
     __tablename__ = 'schedules'
 
     id = db.Column(db.Integer, primary_key=True)
-    departure_time = db.Column(db.DateTime, nullable=False, index=True)
-    arrival_time = db.Column(db.DateTime, nullable=False)
+    departure_time = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    arrival_time = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     route_id = db.Column(db.Integer, db.ForeignKey('routes.id'), nullable=False, index=True)
     bus_id = db.Column(db.Integer, db.ForeignKey('buses.id'), nullable=False, index=True)
     price = db.Column(db.Float, nullable=False)
@@ -219,8 +219,21 @@ class Schedules(db.Model):
     bookings = db.relationship('Bookings', backref='schedule', lazy=True)
 
     __table_args__ = (
-        db.Index('ix_schedules_route_departure', 'route_id', 'departure_time'),
+        db.Index('ix_schedules_route_departure', 'route_id', 'departure_time', 'arrival_time'),
     )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "departure_time": self.departure_time.isoformat(),
+            "arrival_time": self.arrival_time.isoformat(),
+            "price": self.price,
+            "available_seats": self.available_seats,
+            "route_id": self.route_id,
+            "bus_id": self.bus_id,
+            "bus": self.bus.to_dict() if self.bus else None,
+            "route": self.route.to_dict() if self.route else None
+        }
 
 
 class Bookings(db.Model):
@@ -391,7 +404,7 @@ class PasswordResetCode(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc) + timedelta(minutes=10), index=True)
 
     def create_code(self):
-        self.code = str(random.randrange(100000, 999999))
+        self.code = str(secrets.randbelow())
     
     def is_code_valid(self):
         return datetime.now(timezone.utc) < self.expires_at

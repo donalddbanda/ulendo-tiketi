@@ -53,7 +53,7 @@ def invite_employee():
         abort(400, description=f'Invalid role. Must be one of: {", ".join(valid_roles)}')
     
     # Determine branch_id and company_id based on user role
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
         
@@ -70,7 +70,7 @@ def invite_employee():
         if not branch or branch.company_id != company_id:
             abort(400, description='Branch not found or does not belong to your company')
     
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if not current_user.branch_id:
             abort(400, description='Branch manager must be associated with a branch')
         
@@ -261,11 +261,11 @@ def list_invitations():
     branch_id = request.args.get('branch_id', type=int)
     
     # Build query based on role
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         query = EmployeeInvitation.query.filter_by(company_id=current_user.company_id)
         if branch_id:
             query = query.filter_by(branch_id=branch_id)
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         query = EmployeeInvitation.query.filter_by(branch_id=current_user.branch_id)
     else:
         abort(403)
@@ -308,10 +308,10 @@ def cancel_invitation(invitation_id: int):
         abort(404, description='Invitation not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if invitation.company_id != current_user.company_id:
             abort(403, description='You can only cancel invitations in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if invitation.branch_id != current_user.branch_id:
             abort(403, description='You can only cancel invitations for your branch')
     
@@ -347,16 +347,16 @@ def list_employees():
     - role: Filter by role
     - branch_id: Filter by branch (company owners only)
     """
-    if current_user.role.lower() not in ['admin', 'company_owner', 'branch_manager']:
+    if current_user.role.lower().strip() not in ['admin', 'company_owner', 'branch_manager']:
         abort(403, description='You do not have permission to view employees')
     
     role_filter = request.args.get('role')
     branch_id = request.args.get('branch_id', type=int)
     
     # Build query
-    if current_user.role.lower() == 'admin':
+    if current_user.role.lower().strip() == 'admin':
         query = Users.query.filter(Users.role != 'passenger')
-    elif current_user.role.lower() == 'company_owner':
+    elif current_user.role.lower().strip() == 'company_owner':
         query = Users.query.filter_by(company_id=current_user.company_id)
         if branch_id:
             query = query.filter_by(branch_id=branch_id)
@@ -410,12 +410,12 @@ def get_employee(employee_id: int):
         abort(404, description='Employee not found')
     
     # Authorization check
-    if current_user.role.lower() == 'admin':
+    if current_user.role.lower().strip() == 'admin':
         pass  # Admins can view anyone
-    elif current_user.role.lower() == 'company_owner':
+    elif current_user.role.lower().strip() == 'company_owner':
         if employee.company_id != current_user.company_id:
             abort(403, description='You can only view employees in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if employee.branch_id != current_user.branch_id:
             abort(403, description='You can only view employees in your branch')
     else:
@@ -471,10 +471,10 @@ def update_employee(employee_id: int):
         abort(404, description='Employee not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if employee.company_id != current_user.company_id:
             abort(403, description='You can only update employees in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if employee.branch_id != current_user.branch_id:
             abort(403, description='You can only update employees in your branch')
     
@@ -505,7 +505,7 @@ def update_employee(employee_id: int):
         employee.phone_number = new_phone
     
     # Company owner only fields
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if 'role' in data:
             new_role = data['role'].lower()
             valid_roles = ['conductor', 'bus_manager', 'schedule_manager', 
@@ -551,7 +551,7 @@ def remove_employee(employee_id: int):
         abort(404, description='Employee not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if employee.company_id != current_user.company_id:
             abort(403, description='You can only remove employees from your company')
     
@@ -609,10 +609,10 @@ def assign_bus_to_conductor(employee_id: int):
         abort(400, description='Employee must be a conductor')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if employee.company_id != current_user.company_id:
             abort(403)
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if employee.branch_id != current_user.branch_id:
             abort(403)
     
@@ -629,7 +629,7 @@ def assign_bus_to_conductor(employee_id: int):
         abort(404, description='Bus not found')
     
     # Verify bus belongs to same company/branch
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if bus.company_id != current_user.company_id:
             abort(403, description='Bus must belong to your company')
     else:
@@ -677,10 +677,10 @@ def unassign_bus_from_conductor(employee_id: int):
         abort(400, description='Employee must be a conductor')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if employee.company_id != current_user.company_id:
             abort(403)
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if employee.branch_id != current_user.branch_id:
             abort(403)
     

@@ -36,11 +36,11 @@ def create_branch():
         abort(400, description='Branch name is required')
     
     # Determine company_id based on user role
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
         company_id = current_user.company_id
-    elif current_user.role.lower() == 'admin':
+    elif current_user.role.lower().strip() == 'admin':
         if not company_id:
             abort(400, description='company_id is required for admin users')
     
@@ -122,18 +122,18 @@ def list_branches():
     Query parameters:
     - company_id: Filter by company (admin only)
     """
-    if current_user.role.lower() == 'passenger':
+    if current_user.role.lower().strip() == 'passenger':
         abort(403, description='Passengers cannot access branch information')
     
     company_id = request.args.get('company_id', type=int)
     
     # Build query based on role
-    if current_user.role.lower() == 'admin':
+    if current_user.role.lower().strip() == 'admin':
         query = Branches.query
         if company_id:
             query = query.filter_by(company_id=company_id)
     
-    elif current_user.role.lower() == 'company_owner':
+    elif current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='User not associated with any company')
         query = Branches.query.filter_by(company_id=current_user.company_id)
@@ -184,16 +184,16 @@ def get_branch(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'passenger':
+    if current_user.role.lower().strip() == 'passenger':
         abort(403, description='Passengers cannot access branch information')
     
-    if current_user.role.lower() not in ['admin']:
+    if current_user.role.lower().strip() not in ['admin']:
         # Check if user belongs to the same company
         if current_user.company_id != branch.company_id:
             abort(403, description='You can only view branches in your company')
         
         # For non-owners, check if they belong to this branch
-        if current_user.role.lower() != 'company_owner':
+        if current_user.role.lower().strip() != 'company_owner':
             if current_user.branch_id != branch_id:
                 abort(403, description='You can only view your own branch')
     
@@ -241,10 +241,10 @@ def update_branch(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if current_user.company_id != branch.company_id:
             abort(403, description='You can only update branches in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if current_user.branch_id != branch_id:
             abort(403, description='You can only update your own branch')
     
@@ -268,7 +268,7 @@ def update_branch(branch_id: int):
         branch.name = new_name
     
     # Only company owners can change branch manager
-    if 'manager_id' in data and current_user.role.lower() == 'company_owner':
+    if 'manager_id' in data and current_user.role.lower().strip() == 'company_owner':
         new_manager_id = data['manager_id']
         
         if new_manager_id:
@@ -320,7 +320,7 @@ def delete_branch(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if current_user.company_id != branch.company_id:
             abort(403, description='You can only delete branches in your company')
     
@@ -371,10 +371,10 @@ def get_branch_employees(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if current_user.company_id != branch.company_id:
             abort(403, description='You can only view branches in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if current_user.branch_id != branch_id:
             abort(403, description='You can only view employees in your branch')
     
@@ -417,14 +417,14 @@ def get_branch_buses(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'passenger':
+    if current_user.role.lower().strip() == 'passenger':
         abort(403, description='Passengers cannot access branch bus information')
     
-    if current_user.role.lower() not in ['admin']:
+    if current_user.role.lower().strip() not in ['admin']:
         if current_user.company_id != branch.company_id:
             abort(403, description='You can only view branches in your company')
         
-        if current_user.role.lower() not in ['company_owner', 'branch_manager']:
+        if current_user.role.lower().strip() not in ['company_owner', 'branch_manager']:
             if current_user.branch_id != branch_id:
                 abort(403, description='You can only view buses in your branch')
     
@@ -468,10 +468,10 @@ def get_branch_statistics(branch_id: int):
         abort(404, description='Branch not found')
     
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if current_user.company_id != branch.company_id:
             abort(403)
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if current_user.branch_id != branch_id:
             abort(403)
     

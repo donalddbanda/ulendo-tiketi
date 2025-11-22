@@ -210,7 +210,7 @@ def download_qr_code(booking_id: int):
         abort(404, description='Booking not found')
     
     # Authorization check
-    if current_user.role.lower() != 'admin' and booking.user_id != current_user.id:
+    if current_user.role.lower().strip() != 'admin' and booking.user_id != current_user.id:
         abort(403, description='Unauthorized access')
     
     # Only generate QR for confirmed bookings
@@ -263,7 +263,7 @@ def get_qr_code_data(booking_id: int):
         abort(404, description='Booking not found')
     
     # Authorization check
-    if current_user.role.lower() != 'admin' and booking.user_id != current_user.id:
+    if current_user.role.lower().strip() != 'admin' and booking.user_id != current_user.id:
         abort(403)
     
     if booking.status != 'confirmed':
@@ -340,8 +340,8 @@ def scan_qr_code():
         }), 404
     
     # Check company authorization
-    if current_user.role.lower() == 'company_owner':
-        if booking.schedule.bus.company_id != current_user.id:
+    if current_user.role.lower().strip() == 'company_owner':
+        if booking.schedule.bus.company_id != current_user.company_id:
             abort(403, description='Unauthorized: This booking is not for your company')
     
     # Validate QR code
@@ -476,7 +476,7 @@ def check_qr_status(booking_id: int):
         abort(404, description='Booking not found')
     
     # Authorization
-    if current_user.role.lower() != 'admin' and booking.user_id != current_user.id:
+    if current_user.role.lower().strip() != 'admin' and booking.user_id != current_user.id:
         abort(403)
     
     is_valid, message = booking.is_qr_valid()

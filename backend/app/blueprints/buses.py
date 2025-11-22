@@ -10,10 +10,7 @@ buses_bp = Blueprint('buses', __name__)
 @buses_bp.route('/add', methods=["POST"])
 @schedule_or_bus_manager_required
 def add_bus():
-    """ Add bus (admin or company) """
-
-    if current_user.role.lower() == 'company_owner' and not current_user.can_add_bus():
-        return jsonify({"message": "company not registered to add bus"}), 403
+    """ Add bus (bus_manager or schedule_manager only) """
     
     data = request.get_json()
     if not data:
@@ -21,47 +18,47 @@ def add_bus():
 
     bus_number = data.get('bus_number')
     seating_capacity = data.get('seating_capacity')
-    company_id = data.get('company_id', None)
     branch_id = data.get('branch_id')
 
-    if not all([bus_number, seating_capacity, branch_id]):  # ADD branch_id HERE
+    if not all([bus_number, seating_capacity, branch_id]):
         abort(400, description='bus number, seating capacity, and branch_id are required')
 
-    if current_user.role.lower() == 'admin' and not company_id:
-        abort(400, description='company_id is required for admin users')
+    # Get the user's company_id - bus/schedule managers must belong to a company
+    if not current_user.company_id:
+        abort(403, description='User must be associated with a company to add buses')
     
-    # If company_owner, auto-assign their company_id and validate branch
-    if current_user.role.lower() == 'company_owner':
-        company_id = current_user.company_id
+    company_id = current_user.company_id
 
-        # Validate that branch belongs to their company
-        branch = Branches.query.filter_by(id=branch_id, company_id=company_id).first()
-        if not branch:
-            abort(400, description='Branch not found or does not belong to your company')
+    # Validate that branch belongs to their company
+    branch = Branches.query.filter_by(id=branch_id, company_id=company_id).first()
+    if not branch:
+        abort(400, description='Branch not found or does not belong to your company')
     
+    # Verify company is registered
     company = BusCompanies.query.filter_by(id=company_id).first()
-
-    if company_id and not company:
-        abort(400, description='company with provided company_id does not exist')
+    if not company:
+        abort(400, description='Company not found')
     
     if company.status != 'registered':
-        return jsonify({"message": "unregistered companies cannot add buses"}), 403
+        abort(403, description='Only registered companies can add buses')
 
-    if current_user.role.lower() != 'admin' and company_id != current_user.company_id:
-        abort(403)
-    
+    # Check if bus number already exists
     if Buses.query.filter_by(bus_number=bus_number).first():
         abort(400, description='Bus with this number already exists.')
     
-    bus = Buses(bus_number=bus_number, seating_capacity=seating_capacity, branch_id=branch_id)  # ADD branch_id
-    bus.company_id = company_id
+    bus = Buses(
+        bus_number=bus_number, 
+        seating_capacity=seating_capacity, 
+        branch_id=branch_id,
+        company_id=company_id
+    )
 
     try:
         db.session.add(bus)
         db.session.commit()
-    except:
+    except Exception as e:
         db.session.rollback()
-        abort(500)
+        abort(500, description=f'Failed to add bus: {str(e)}')
     
     return jsonify({"message": "bus successfully added", "bus": bus.to_dict()}), 201
 
@@ -83,7 +80,7 @@ def get_company_buses():
     """ Get buses for current user's company """
     company_id = request.args.get('company_id', type=int)
     
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         company_id = current_user.id
     elif not company_id:
         abort(400, description='Company ID required for admin requests')
@@ -115,7 +112,7 @@ def update_bus(bus_id: int):
         abort(404, description='Bus not found')
     
     # Check permissions
-    if current_user.role.lower() == 'company_owner' and bus.company_id != current_user.id:
+    if current_user.role.lower().strip() == 'company_owner' and bus.company_id != current_user.id:
         abort(403, description='Not authorized to update this bus')
     
     data = request.get_json()
@@ -146,7 +143,7 @@ def delete_bus(bus_id: int):
         abort(404, description='Bus not found')
     
     # Check permissions
-    if current_user.role.lower() == 'company_owner' and bus.company_id != current_user.id:
+    if current_user.role.lower().strip() == 'company_owner' and bus.company_id != current_user.id:
         abort(403, description='Not authorized to delete this bus')
     
     try:

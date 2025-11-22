@@ -10,3 +10,4 @@ pyjwt
 redis
 qrcode[pil]
 pillow
+python-dateutil

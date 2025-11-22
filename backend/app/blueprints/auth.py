@@ -210,7 +210,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != 'admin':
+        if current_user.role.lower().strip() != 'admin':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -220,7 +220,7 @@ def passenger_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != 'passenger':
+        if current_user.role.lower().strip() != 'passenger':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -230,7 +230,7 @@ def company_owner_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != 'company_owner':
+        if current_user.role.lower().strip() != 'company_owner':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -240,7 +240,7 @@ def passenger_or_admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ['admin', 'passenger']:
+        if current_user.role.lower().strip() not in ['admin', 'passenger']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -250,7 +250,7 @@ def company_owner_or_admin_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ['admin', 'company_owner']:
+        if current_user.role.lower().strip() not in ['admin', 'company_owner']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -258,7 +258,7 @@ def company_owner_or_admin_required(f):
 def company_owner_not_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if current_user.is_authenticated and current_user.role.lower() == 'company_owner':
+        if current_user.is_authenticated and current_user.role.lower().strip() == 'company_owner':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -268,7 +268,7 @@ def accounts_manager_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ["account_manager", "company_owner"]:
+        if current_user.role.lower().strip() not in ["account_manager", "company_owner"]:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -278,7 +278,7 @@ def conductor_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != "conductor":
+        if current_user.role.lower().strip() != "conductor":
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -288,7 +288,7 @@ def branch_manager_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ['company_owner', 'branch_manager']:
+        if current_user.role.lower().strip() not in ['company_owner', 'branch_manager']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -298,7 +298,7 @@ def schedule_or_bus_manager_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() not in ['bus_manager', 'schedule_manager']:
+        if current_user.role.lower().strip() not in ['bus_manager', 'schedule_manager']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -308,7 +308,7 @@ def schedule_manager_required(f):
     def decorated_function(*args, **kwargs):
         if current_user.is_anonymous:
             abort(401)
-        if current_user.role.lower() != 'schedule_manager':
+        if current_user.role.lower().strip() != 'schedule_manager':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

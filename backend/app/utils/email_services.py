@@ -44,4 +44,4 @@ def send_employee_invitation_email(invitation_data):
     try:
         mail.send(msg)
     except Exception as e:
-        print(f"Failed to send invitation email: {e}")
+        current_app.logger.error(f"Failed to send email: {e}")

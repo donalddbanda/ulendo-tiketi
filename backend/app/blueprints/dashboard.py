@@ -188,7 +188,7 @@ def company_dashboard():
     - period: today, week, month, year, all (default: month)
     """
     # Determine company_id
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
         company_id = current_user.company_id
@@ -394,10 +394,10 @@ def branch_dashboard(branch_id: int):
         abort(404, description='Branch not found')
 
     # Authorization check
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if branch.company_id != current_user.company_id:
             abort(403, description='You can only view branches in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if current_user.branch_id != branch_id:
             abort(403, description='You can only view your own branch')
 
@@ -572,7 +572,7 @@ def conductor_dashboard(conductor_id: int):
     Query parameters:
     - period: today, week, month, year, all (default: month)
     """
-    if current_user.role.lower() not in ['company_owner', 'conductor', 'branch manager']:
+    if current_user.role.lower().strip() not in ['company_owner', 'conductor', 'branch manager']:
         abort(403, description="Role denied")
 
     conductor = Users.query.filter_by(id=conductor_id).first()
@@ -580,13 +580,13 @@ def conductor_dashboard(conductor_id: int):
         abort(404, description='Conductor not found')
 
     # Authorization check
-    if current_user.role.lower() == 'conductor':
+    if current_user.role.lower().strip() == 'conductor':
         if current_user.id != conductor_id:
             abort(403, description='You can only view your own dashboard')
-    elif current_user.role.lower() == 'company_owner':
+    elif current_user.role.lower().strip() == 'company_owner':
         if conductor.company_id != current_user.company_id:
             abort(403, description='Conductor must be in your company')
-    elif current_user.role.lower() == 'branch_manager':
+    elif current_user.role.lower().strip() == 'branch_manager':
         if conductor.branch_id != current_user.branch_id:
             abort(403, description='Conductor must be in your branch')
 
@@ -849,7 +849,7 @@ def user_summary():
     Quick summary for any authenticated user based on their role.
     Returns role-appropriate quick stats.
     """
-    user_role = current_user.role.lower()
+    user_role = current_user.role.lower().strip()
 
     if user_role == 'admin':
         # Quick admin stats
@@ -994,7 +994,7 @@ def revenue_chart():
     - group_by: day, week, month (default: day)
     """
     # Determine company_id
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
         company_id = current_user.company_id
@@ -1090,7 +1090,7 @@ def booking_trends():
     - period: week, month, year (default: month)
     """
     # Determine company_id
-    if current_user.role.lower() == 'company_owner':
+    if current_user.role.lower().strip() == 'company_owner':
         if not current_user.company_id:
             abort(400, description='Company owner must be associated with a company')
         company_id = current_user.company_id

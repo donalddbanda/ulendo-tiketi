@@ -163,7 +163,7 @@ def register_bus_company():
         if data.get('create_default_branch', False):
             branch_name = data.get('default_branch_name', 'Main Branch')
             
-            # ADD THIS CHECK
+            # Check if branch for that company already exists
             existing_branch = Branches.query.filter_by(
                 name=branch_name,
                 company_id=bus_company.id
