@@ -179,12 +179,12 @@ def reset_password():
     code = data.get('code')
     new_password = data.get('new_password')
     # Accept both spellings to be forgiving: confirm_new__password (legacy) and confirm_new_password
-    confirm_new__password = data.get('confirm_new__password') or data.get('confirm_new_password')
+    confirm_new_password = data.get('confirm_new_password')
     
-    if not all([code, new_password, confirm_new__password]):
+    if not all([code, new_password, confirm_new_password]):
         abort(400, description='code, new password and password confirmation required')
     
-    if new_password != confirm_new__password:
+    if new_password != confirm_new_password:
         abort(400, description='passwords do not match')
 
     query_code = PasswordResetCode.query.filter_by(code=code).first()

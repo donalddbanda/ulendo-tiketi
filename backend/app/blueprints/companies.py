@@ -26,7 +26,9 @@ def register_bus_company():
     {
         "company": {
             "name": "ABC Bus Company",
-            "description": "Premium bus services"
+            "description": "Premium bus services",
+            "partner": true, // Optional (defaults to false)
+            "partnership_end": "2025-12-31" // Optional (defaults to null)
         },
         "owner": {
             "full_name": "John Doe",
@@ -58,6 +60,8 @@ def register_bus_company():
     
     # Validate required company data
     company_name = company_data.get('name')
+    # partner = company_data.get('partner')
+    # partnership_end = company_data.get('partnership_end')
     description = company_data.get('description')
     phone_numbers = company_data.get('phone_numbers', [])
     company_email = company_data.get('email')
@@ -146,6 +150,8 @@ def register_bus_company():
         bus_company = BusCompanies(
             name=company_name,
             description=description,
+            # partner=partner,
+            # partnership_end=partnership_end,
             contact_info=contact_info,
             account_details=account_details,
             status='registered',  # Auto-approve since admin is creating it

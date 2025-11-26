@@ -1,4 +1,5 @@
 from app import db
+from app.models import BusCompanies
 from ..utils.payments import verify_payment
 from app.models import Bookings, Transactions
 from flask import Blueprint, jsonify, request, abort, current_app
@@ -56,6 +57,14 @@ def payment_callback():
             
             # Update company balance (schedule.price - platform fee)
             platform_fee = current_app.config.get('PLATFORM_FEE', 3000)
+
+            # Get company ID
+            company_id = booking.schedule_id.bus.company_id
+
+            # Check if compnay is partner
+            # if BusCompany.query.filter_by(id=company_id).first().is_partner():
+            #     platform_fee = int(platform_fee) / 2
+
             company_earnings = booking.schedule.price - platform_fee
             
             bus_company = booking.schedule.bus.company

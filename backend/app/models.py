@@ -105,6 +105,8 @@ class BusCompanies(db.Model):
     contact_info = db.Column(db.JSON, nullable=False)
     account_details = db.Column(db.JSON, nullable=False)
     status = db.Column(db.String(50), default='pending', index=True)
+    partner = db.Column(db.Boolean, default=False, index=True)
+    partnership_end = db.Column(db.DateTime, nullable=True)
     balance = db.Column(db.Float, nullable=False, default=0.0)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
 
@@ -118,11 +120,16 @@ class BusCompanies(db.Model):
             "name": self.name,
             "description": self.description,
             "status": self.status,
+            "partner": self.partner,
+            "partnership_end": self.partnership_end,
             "owner_id": self.owner_id
         }
     
     def can_add_bus(self):
         return self.status == 'registered'
+
+    def is_partner(self):
+        return self.partner and self.partnership_end > datetime.now(timezone.utc)
     
     def __repr__(self):
         return f"<Company {self.id}|{self.name}>"
