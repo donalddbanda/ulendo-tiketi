@@ -108,7 +108,7 @@
 }
 ```
 
-*GET /api/users/get/<id>*
+*GET /api/users/get/{id}*
 #### Get specific user details (Admin only)
 
 *GET /api/users/me*
@@ -120,7 +120,7 @@
 - `role`: Filter by role
 - `q`: Search query
 
-*PUT /api/users/update/<id>*
+*PUT /api/users/update/{id}*
 #### Update user info
 ### Request body:
 ```json
@@ -167,20 +167,20 @@
 *GET /api/companies/pending*
 #### Get pending company registrations (Admin only)
 
-*GET /api/companies/<id>*
+*GET /api/companies/{id}*
 #### View a specific bus company
 
-*POST /api/companies/review/<id>/<action>*
+*POST /api/companies/review/{id}/{action}*
 #### Approve or reject company registration (Admin only)
 - `action`: 'approve' or 'reject'
 
-*PUT /api/companies/update/<id>*
+*PUT /api/companies/update/{id}*
 #### Update company info (Owner or Admin)
 
-*POST /api/companies/deactivate/<id>*
+*POST /api/companies/deactivate/{id}*
 #### Deactivate a company (Admin only)
 
-*POST /api/companies/activate/<id>*
+*POST /api/companies/activate/{id}*
 #### Activate a company (Admin only)
 
 ## Buses
@@ -204,13 +204,13 @@
 ### Query Params:
 - `company_id`: (Admin only)
 
-*GET /api/buses/<id>*
+*GET /api/buses/{id}*
 #### Get a specific bus
 
-*PUT /api/buses/<id>/update*
+*PUT /api/buses/{id}/update*
 #### Update bus details
 
-*DELETE /api/buses/<id>/delete*
+*DELETE /api/buses/{id}/delete*
 #### Delete a bus
 
 ## Routes
@@ -252,7 +252,7 @@
 - `to_date`: YYYY-MM-DD
 - `route_id`: Filter by route
 
-*GET /api/schedules/<id>*
+*GET /api/schedules/{id}*
 #### Get a specific schedule
 
 *GET /api/schedules/company/schedules*
@@ -262,10 +262,10 @@
 - `to_date`
 - `branch_id`
 
-*PUT /api/schedules/<id>/update*
+*PUT /api/schedules/{id}/update*
 #### Update an existing schedule
 
-*POST /api/schedules/<id>/cancel*
+*POST /api/schedules/{id}/cancel*
 #### Cancel a schedule
 
 ## Bookings
@@ -283,19 +283,19 @@
 *POST /api/bookings/cleanup-abandoned*
 #### Cleanup abandoned bookings (Admin only)
 
-*POST /api/bookings/cancel/<id>*
+*POST /api/bookings/cancel/{id}*
 #### Cancel a booking
 
 *GET /api/bookings/get*
 #### Get all user bookings
 
-*GET /api/bookings/get/<id>*
+*GET /api/bookings/get/{id}*
 #### Get a specific booking
 
-*GET /api/bookings/qr-code/<id>*
+*GET /api/bookings/qr-code/{id}*
 #### Download QR code image
 
-*GET /api/bookings/qr-code-data/<id>*
+*GET /api/bookings/qr-code-data/{id}*
 #### Get QR code data
 
 *POST /api/bookings/scan-qr*
@@ -310,7 +310,7 @@
 *POST /api/bookings/scan-reference*
 #### Verify booking by reference
 
-*GET /api/bookings/qr-status/<id>*
+*GET /api/bookings/qr-status/{id}*
 #### Check QR status
 
 ## Search
@@ -339,7 +339,7 @@
 *GET /api/payments/failed*
 #### Handle failed payment
 
-*GET /api/payments/verify/<tx_ref>*
+*GET /api/payments/verify/{tx_ref}*
 #### Verify payment status
 
 *POST /api/payments/webhook*
@@ -360,10 +360,10 @@
 *GET /api/payouts/list*
 #### List payouts
 
-*GET /api/payouts/<id>*
+*GET /api/payouts/{id}*
 #### Get payout details
 
-*POST /api/payouts/process/<id>*
+*POST /api/payouts/process/{id}*
 #### Process payout (Admin only)
 ### Request body:
 ```json
@@ -373,7 +373,7 @@
 }
 ```
 
-*POST /api/payouts/cancel/<id>*
+*POST /api/payouts/cancel/{id}*
 #### Cancel payout request
 
 *GET /api/payouts/balance*
@@ -412,22 +412,22 @@
 *GET /api/branches/list*
 #### List branches
 
-*GET /api/branches/<id>*
+*GET /api/branches/{id}*
 #### Get branch details
 
-*PUT /api/branches/<id>/update*
+*PUT /api/branches/{id}/update*
 #### Update branch info
 
-*DELETE /api/branches/<id>/delete*
+*DELETE /api/branches/{id}/delete*
 #### Delete branch
 
-*GET /api/branches/<id>/employees*
+*GET /api/branches/{id}/employees*
 #### Get branch employees
 
-*GET /api/branches/<id>/buses*
+*GET /api/branches/{id}/buses*
 #### Get branch buses
 
-*GET /api/branches/<id>/statistics*
+*GET /api/branches/{id}/statistics*
 #### Get branch statistics
 
 ## Dashboard
@@ -438,10 +438,10 @@
 *GET /api/dashboard/company*
 #### Company dashboard stats
 
-*GET /api/dashboard/branch/<id>*
+*GET /api/dashboard/branch/{id}*
 #### Branch dashboard stats
 
-*GET /api/dashboard/conductor/<id>*
+*GET /api/dashboard/conductor/{id}*
 #### Conductor dashboard stats
 
 *GET /api/dashboard/passenger*
@@ -476,23 +476,23 @@
 *GET /api/employees/invitations*
 #### List invitations
 
-*DELETE /api/employees/invitations/<id>/cancel*
+*DELETE /api/employees/invitations/{id}/cancel*
 #### Cancel invitation
 
 *GET /api/employees/list*
 #### List employees
 
-*GET /api/employees/<id>*
+*GET /api/employees/{id}*
 #### Get employee details
 
-*PUT /api/employees/<id>/update*
+*PUT /api/employees/{id}/update*
 #### Update employee info
 
-*DELETE /api/employees/<id>/remove*
+*DELETE /api/employees/{id}/remove*
 #### Remove employee
 
-*POST /api/employees/<id>/assign-bus*
+*POST /api/employees/{id}/assign-bus*
 #### Assign bus to conductor
 
-*POST /api/employees/<id>/unassign-bus*
+*POST /api/employees/{id}/unassign-bus*
 #### Unassign bus from conductor
