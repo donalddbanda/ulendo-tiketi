@@ -75,13 +75,13 @@ class ApiService {
   }
 
   async register(emailOrPhone: string, password: string, fullName: string, role: 'passenger' | 'company', phone?: string): Promise<any> {
+    // Public registration should not include role selection (backend allows passenger public registers)
     return this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         email: emailOrPhone,
         password,
         full_name: fullName,
-        role,
         phone: phone || emailOrPhone,
       }),
     });
@@ -103,27 +103,23 @@ class ApiService {
     return this.request(`/companies/review/${id}/${action}`, { method: 'POST' });
   }
 
-  // Send password reset link for a company
+  // Send password reset (public endpoint)
   async sendPasswordReset(email: string): Promise<any> {
-    return this.request('/companies/send-reset', {
+    return this.request('/auth/request/password-reset/', {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
   }
 
   // Admin: register a new bus company (admin-only)
-  async registerCompany(companyData: {
-    name: string;
-    description: string;
-    phone_numbers: string[];
-    email?: string;
-    bank_name?: string;
-    bank_account_number?: string;
-    bank_account_name?: string;
+  async registerCompany(payload: {
+    company: { name: string; description: string; email?: string; phone_numbers: string[] };
+    owner: { full_name: string; email: string; phone_number: string; password: string };
+    bank_account?: { bank_name: string; account_number: string; account_name: string };
   }): Promise<any> {
     return this.request('/companies/register', {
       method: 'POST',
-      body: JSON.stringify(companyData),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -175,15 +171,22 @@ class ApiService {
     return response.blob();
   }
 
-  async validateQRCode(bookingId: string): Promise<any> {
-    return this.request(`/bookings/validate-qr/${bookingId}`, { method: 'POST' });
-  }
-
-  async scanQRCode(qrReference: string, busId: string): Promise<any> {
+  // QR validation — use scan endpoint which accepts { qr_data }
+  async validateQRCode(qrData: string): Promise<any> {
     return this.request('/bookings/scan-qr', {
       method: 'POST',
-      body: JSON.stringify({ qr_reference: qrReference, bus_id: busId }),
+      body: JSON.stringify({ qr_data: qrData }),
     });
+  }
+
+  // Conductor scan helper (alias)
+  async scanQRCode(qrData: string): Promise<any> {
+    return this.validateQRCode(qrData);
+  }
+
+  // Logout - call server then rely on session cookie cleared server-side
+  async logout(): Promise<any> {
+    return this.request('/auth/logout', { method: 'POST' });
   }
 
   // --- Buses ---
@@ -205,6 +208,16 @@ class ApiService {
 
   async deleteBus(busId: string): Promise<void> {
     return this.request(`/buses/${busId}/delete`, { method: 'DELETE' });
+  }
+
+  // Accounts / Payouts
+  async getCompanyBalance(): Promise<any> {
+    // returns { company: { balance: number, ... } }
+    return this.request('/companies/whoami', { method: 'GET' });
+  }
+
+  async requestPayout(amount: number): Promise<any> {
+    return this.request('/payouts/request', { method: 'POST', body: JSON.stringify({ amount }) });
   }
 
   // --- Schedules ---
@@ -232,6 +245,92 @@ class ApiService {
   async getLiveLocation(busId: string): Promise<any> {
     return this.request(`/gis/buses/${busId}/location`);
   }
+
+  // --- Branches ---
+  async createBranch(data: { name: string; company_id: number; manager_id?: number }): Promise<any> {
+    return this.request('/branches/create', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async listBranches(): Promise<any> {
+    return this.request('/branches/list', { method: 'GET' });
+  }
+
+  async getBranch(branchId: string): Promise<any> {
+    return this.request(`/branches/${branchId}`, { method: 'GET' });
+  }
+
+  async updateBranch(branchId: string, data: any): Promise<any> {
+    return this.request(`/branches/${branchId}/update`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deleteBranch(branchId: string): Promise<any> {
+    return this.request(`/branches/${branchId}/delete`, { method: 'DELETE' });
+  }
+
+  async getBranchEmployees(branchId: string): Promise<any> {
+    return this.request(`/branches/${branchId}/employees`, { method: 'GET' });
+  }
+
+  async getBranchBuses(branchId: string): Promise<any> {
+    return this.request(`/branches/${branchId}/buses`, { method: 'GET' });
+  }
+
+  // --- Employees ---
+  async inviteEmployee(payload: { email: string; phone_number: string; full_name: string; role: string; branch_id?: number }): Promise<any> {
+    return this.request('/employees/invite', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async acceptEmployeeInvitation(payload: { invitation_code: string; password: string; confirm_password: string }): Promise<any> {
+    return this.request('/employees/accept-invitation', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async listInvitations(): Promise<any> {
+    return this.request('/employees/invitations', { method: 'GET' });
+  }
+
+  async cancelInvitation(invitationId: string): Promise<any> {
+    return this.request(`/employees/invitations/${invitationId}/cancel`, { method: 'DELETE' });
+  }
+
+  async listEmployees(): Promise<any> {
+    return this.request('/employees/list', { method: 'GET' });
+  }
+
+  async getEmployee(employeeId: string): Promise<any> {
+    return this.request(`/employees/${employeeId}`, { method: 'GET' });
+  }
+
+  async updateEmployee(employeeId: string, data: any): Promise<any> {
+    return this.request(`/employees/${employeeId}/update`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async removeEmployee(employeeId: string): Promise<any> {
+    return this.request(`/employees/${employeeId}/remove`, { method: 'DELETE' });
+  }
+
+  async assignBusToEmployee(employeeId: string, payload: { bus_id: number }): Promise<any> {
+    return this.request(`/employees/${employeeId}/assign-bus`, { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  async unassignBusFromEmployee(employeeId: string, payload: { bus_id: number }): Promise<any> {
+    return this.request(`/employees/${employeeId}/unassign-bus`, { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  // --- Banks ---
+  async getBankAccount(): Promise<any> {
+    return this.request('/banks/account', { method: 'GET' });
+  }
+
+  async deleteBankAccount(): Promise<any> {
+    return this.request('/banks/account/delete', { method: 'DELETE' });
+  }
+
+  // --- Dashboard ---
+  async getAdminDashboard(): Promise<any> { return this.request('/dashboard/admin', { method: 'GET' }); }
+  async getCompanyDashboard(): Promise<any> { return this.request('/dashboard/company', { method: 'GET' }); }
+  async getBranchDashboard(branchId: string): Promise<any> { return this.request(`/dashboard/branch/${branchId}`, { method: 'GET' }); }
+  async getConductorDashboard(conductorId: string): Promise<any> { return this.request(`/dashboard/conductor/${conductorId}`, { method: 'GET' }); }
+  async getPassengerDashboard(): Promise<any> { return this.request('/dashboard/passenger', { method: 'GET' }); }
 }
 
 export const apiService = new ApiService();

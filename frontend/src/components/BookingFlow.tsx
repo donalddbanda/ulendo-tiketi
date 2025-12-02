@@ -15,6 +15,7 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [pendingBooking, setPendingBooking] = useState<any>(null);
 
   const [scheduleDetails, setScheduleDetails] = useState<any>(null);
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
@@ -69,20 +70,45 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
         seat_number: selectedSeat,
       });
 
-      if (bookingResponse.payment_link) {
-        // Redirect to PayChangu payment page
-        window.location.href = bookingResponse.payment_link;
-      } else {
-        // Show success if payment link not needed
-        setSuccess(true);
-        setTimeout(() => {
-          onComplete();
-        }, 3000);
+      // Backend may return an existing pending booking with a payment link.
+      const bookingObj = bookingResponse?.booking || bookingResponse;
+      const status = bookingObj?.status || bookingResponse?.status;
+      if (status === 'pending' || bookingResponse?.payment_link) {
+        // Show pending state and let user continue to payment or cancel
+        setPendingBooking(bookingResponse);
+        return;
       }
+
+      // No payment required, treat as success
+      setSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 3000);
     } catch (err: any) {
       setError(err.message || 'Booking failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinueToPayment = () => {
+    const link = pendingBooking?.payment_link;
+    if (link) {
+      window.location.href = link;
+    } else {
+      setError('No payment link available');
+    }
+  };
+
+  const handleCancelPending = async () => {
+    try {
+      const bookingId = pendingBooking?.booking?.id || pendingBooking?.id;
+      if (!bookingId) throw new Error('Missing booking id');
+      await apiService.cancelBooking(String(bookingId));
+      setPendingBooking(null);
+      setError('Previous booking cancelled. You may try booking again.');
+    } catch (e: any) {
+      setError(e.message || 'Failed to cancel booking');
     }
   };
 
@@ -124,7 +150,26 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
     );
   }
 
-  const capacity = scheduleDetails.bus?.seating_capacity || scheduleDetails.buses?.seating_capacity || 32;
+  if (pendingBooking) {
+    return (
+      <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-10 h-10 text-yellow-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#0A2239] mb-2">Pending Payment</h2>
+          <p className="text-gray-600 mb-4">A previous booking for this passenger is still pending payment.</p>
+          <div className="space-y-3">
+            <button onClick={handleContinueToPayment} className="w-full py-3 bg-[#0057A4] text-white rounded-lg">Continue to Payment</button>
+            <button onClick={handleCancelPending} className="w-full py-3 bg-red-600 text-white rounded-lg">Cancel Existing Booking</button>
+            <button onClick={() => setPendingBooking(null)} className="w-full py-2 border rounded-lg">Close</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const capacity = scheduleDetails.bus?.seating_capacity || 32;
   const seats = Array.from({ length: capacity }, (_, i) => i + 1);
 
   return (
@@ -258,7 +303,7 @@ export function BookingFlow({ scheduleId, onBack, onComplete }: BookingFlowProps
                 <div>
                   <p className="text-gray-600">Company</p>
                   <p className="font-semibold text-[#0A2239]">
-                    {scheduleDetails.bus?.company?.name || scheduleDetails.buses?.bus_companies?.name || 'N/A'}
+                    {scheduleDetails.bus?.company?.name || 'N/A'}
                   </p>
                 </div>
                 <div>

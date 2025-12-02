@@ -13,6 +13,7 @@ import CompanyDashboard from './components/CompanyDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import ConductorDashboard from './components/ConductorDashboard';
 import AccountsManagerDashboard from './components/AccountsManagerDashboard';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AppContent() {
   const { user } = useAuth();
@@ -85,6 +86,7 @@ function AppContent() {
       <Navbar onShowAuth={(type) => setShowAuth(type)} />
       
       <main className="flex-1">
+        <ErrorBoundary>
         {currentView === 'home' && <HomePage onSearch={handleSearch} />}
         {currentView === 'search' && (
           <SearchResults
@@ -114,6 +116,7 @@ function AppContent() {
         {currentView === 'admin' && user && <AdminDashboard />}
         {currentView === 'conductor' && user && <ConductorDashboard />}
         {currentView === 'accounts_manager' && user && <AccountsManagerDashboard />}
+        </ErrorBoundary>
       </main>
 
       <Footer />
